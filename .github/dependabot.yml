@@ -1,0 +1,70 @@
+version: 2
+updates:
+  # Root chain module
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # T2 boundary (docs/guides/DEPENDENCIES.md): consensus-adjacent deps
+      # arrive grouped so they are reviewed together, never merged casually.
+      # github.com/cosmos/* already covers iavl, ics23 and gogoproto.
+      cosmos:
+        patterns:
+          - "github.com/cosmos/*"
+          - "cosmossdk.io/*"
+          - "github.com/cometbft/*"
+      # T1: everything else batches into one weekly PR (patch/minor only —
+      # majors surface individually so they are reviewed deliberately).
+      routine:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "github.com/cosmos/*"
+          - "cosmossdk.io/*"
+          - "github.com/cometbft/*"
+        update-types:
+          - minor
+          - patch
+
+  # Shared types module (wire contract — carries the cosmos-sdk pin)
+  - package-ecosystem: gomod
+    directory: /x/secrets/types
+    schedule:
+      interval: weekly
+    groups:
+      cosmos:
+        patterns:
+          - "github.com/cosmos/*"
+          - "cosmossdk.io/*"
+          - "github.com/cometbft/*"
+      routine:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "github.com/cosmos/*"
+          - "cosmossdk.io/*"
+          - "github.com/cometbft/*"
+        update-types:
+          - minor
+          - patch
+
+  # Shared crypto module (stdlib + golang.org/x/crypto only)
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # Major-only by design. Every action is pinned to a MAJOR tag
+      # (actions/checkout@v7, taiki-e/install-action@v2, …) precisely so it
+      # picks up patches without a PR — so a patch/minor proposal inside a
+      # major we already float on is pure noise, and narrowing a floating tag
+      # to an exact version buys nothing (a version tag is mutable too).
+      # We do want to be told about v2 → v3. Ruled 31 July 2026, closing #123.
+      # If supply-chain pinning is ever wanted, the answer is SHA-pinning every
+      # action deliberately, not per-patch version bumps.
+      actions:
+        patterns:
+          - "*"
+        update-types:
+          - major

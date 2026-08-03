@@ -1,0 +1,61 @@
+# Prebuilt-binary devnet images — the CI fast path (DOCKER_PREBUILT=1).
+#
+# The hermetic Dockerfiles (./Dockerfile, guardian/Dockerfile,
+# devnet/docker/Dockerfile.tools) compile inside the image with BuildKit
+# cache mounts. Those mounts are NOT exported by `--cache-to type=gha`, and
+# `COPY . .` invalidates the build layer on any source change, so every CI
+# run recompiles the entire module graph in-container (~6-7 minutes).
+#
+# This file instead COPYs binaries compiled on the HOST — where the Go build
+# cache persists across CI runs via actions/setup-go — into the same runtime
+# bases. Runtime parity (base image, binary path, EXPOSE, ENTRYPOINT, labels)
+# is kept 1:1 with the hermetic files; only the build provenance differs.
+# Devnet/CI use only — release images keep the hermetic in-container build
+# with its pinned toolchain.
+#
+# Build context: a staging directory containing just `timeflared` and
+# `guardiand` (linux, CGO_ENABLED=0). Driven by `make docker-build
+# DOCKER_PREBUILT=1`; select images with --target.
+
+FROM gcr.io/distroless/static-debian12:nonroot AS timeflared
+ARG VERSION=dev
+ARG COMMIT=unknown
+LABEL org.opencontainers.image.title="timeflared" \
+      org.opencontainers.image.source="https://github.com/timeflareio/chain" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}"
+
+COPY timeflared /usr/local/bin/timeflared
+
+# p2p, RPC, REST API, gRPC
+EXPOSE 26656 26657 1317 9090
+# Data home: mount a named volume at /home/nonroot/.timeflare — no VOLUME
+# directive, for the same reasons as the hermetic Dockerfile.
+
+ENTRYPOINT ["timeflared"]
+
+FROM gcr.io/distroless/static-debian12:nonroot AS guardiand
+ARG VERSION=dev
+ARG COMMIT=unknown
+LABEL org.opencontainers.image.title="guardiand" \
+      org.opencontainers.image.source="https://github.com/timeflareio/chain" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${COMMIT}"
+
+COPY guardiand /usr/local/bin/guardiand
+
+# health, metrics
+EXPOSE 21000 21100
+# Data home: mount a named volume at /home/nonroot/.timeflare/guardian — no
+# VOLUME directive, for the same reasons as the hermetic Dockerfile.
+
+ENTRYPOINT ["guardiand"]
+
+FROM debian:bookworm-slim AS tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends bash jq curl openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY timeflared guardiand /usr/local/bin/
+
+ENTRYPOINT ["bash"]

@@ -1,0 +1,17 @@
+# Accepted govulncheck advisories — reachable findings that CANNOT be fixed by
+# bumping a dependency. Every entry needs a reason and an exit condition,
+# exactly like carried pins (docs/guides/DEPENDENCIES.md §Carrying local
+# patches), and the whole file is re-audited on every T2 upgrade.
+#
+# Adding an entry here is a last resort: if a fixed release exists, bump the
+# module instead (T0 runbook). `make deps-verify` fails on any reachable
+# advisory not listed here.
+
+# golang.org/x/crypto/openpgp is unmaintained BY DESIGN — the advisory is
+# permanent and no fixed version will ever exist (we are on the latest
+# x/crypto). Reached via cosmos-sdk x/upgrade → hashicorp/go-getter, whose
+# GPG-verification path timeflare never invokes (upgrade artefacts are not
+# fetched with detached-signature checksums). Exit: when go-getter replaces
+# openpgp (hashicorp/go-getter#solved upstream) or x/upgrade drops go-getter —
+# re-check on every T2 upgrade.
+GO-2026-5932
