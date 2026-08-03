@@ -97,16 +97,56 @@ jobs:
   # rather than a local build, which is the only way to prove the components
   # still agree after the split — unit tests here cannot.
   #
-  # EXPECTED TO FAIL until migration phase 4. The e2e harness is driven by the
-  # TypeScript SDK's examples, and the SDK has no release to pin yet, so
-  # sdk-sync has nothing to fetch. The job is present rather than deferred so
-  # the gap is visible; it turns green when the SDK ships.
+  # CANNOT PASS YET, for two separate reasons, and it reports both rather than
+  # dying at whichever it reaches first:
+  #
+  #   1. timeflareio/guardian is private, and Actions' default token is scoped
+  #      to this repository, so the release assets are unreadable here. GitHub
+  #      answers 404 for that, which reads as "no such release" and is why the
+  #      first version of this job looked like a missing release.
+  #   2. The e2e harness is driven by the TypeScript SDK's examples, and the SDK
+  #      has no release to pin until migration phase 4.
+  #
+  # The job exists rather than being deferred so the gap stays visible. It turns
+  # green when the guardian is readable and the SDK ships.
   e2e:
-    name: E2E (devnet lifecycle) — pending SDK release
+    name: E2E (devnet lifecycle) — blocked, see preconditions
     needs: [chain, proto, workflows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
+      # Report every blocker at once. A gate that fails at the first missing
+      # prerequisite makes the second one invisible until the first is fixed.
+      - name: Preconditions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          blocked=0
+          if gh repo view timeflareio/guardian >/dev/null 2>&1; then
+            echo "✅ guardian releases are readable"
+          else
+            echo "❌ timeflareio/guardian is not readable from this repository."
+            echo "   It is private, and the default token is scoped to this repo."
+            echo "   Fix: make it public, or supply a read token as GH_TOKEN."
+            blocked=1
+          fi
+          sdk_version="$(grep -E '^SDK_VERSION=' devnet/versions.env | cut -d= -f2)"
+          if [ -n "${sdk_version}" ]; then
+            echo "✅ SDK pinned at ${sdk_version}"
+          else
+            echo "❌ No SDK release to pin (SDK_VERSION empty in devnet/versions.env)."
+            echo "   The TypeScript SDK is lifted in migration phase 4; until then the"
+            echo "   e2e harness has no examples to run."
+            blocked=1
+          fi
+          if [ "${blocked}" -ne 0 ]; then
+            echo ""
+            echo "::error::E2E is blocked on the prerequisites above. This is expected during the multi-repo migration and is tracked in the migration plan — it is not a regression in this pull request."
+            exit 1
+          fi
+
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
@@ -124,6 +164,7 @@ jobs:
         # the 6s default would take the suite past 40 minutes.
         env:
           TIMEFLARE_BLOCK_TIME: 1s
+          GH_TOKEN: ${{ github.token }}
         run: make dev-up
       - name: Run the lifecycle and scenario suites
         env:

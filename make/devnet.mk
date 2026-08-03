@@ -94,9 +94,27 @@ guardiand-sync:
 	asset="guardiand-$(GUARDIAN_VERSION)-$$os-$$arch"; \
 	echo "👮 Fetching $$asset from timeflareio/guardian@$(GUARDIAN_VERSION)"; \
 	tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
-	gh release download "$(GUARDIAN_VERSION)" --repo timeflareio/guardian \
-		--pattern "$$asset" --pattern "*checksums.txt" --dir "$$tmp" || { \
-		echo "❌ could not download $$asset — is $(GUARDIAN_VERSION) released?"; exit 1; }; \
+	if ! gh release download "$(GUARDIAN_VERSION)" --repo timeflareio/guardian \
+		--pattern "$$asset" --pattern "*checksums.txt" --dir "$$tmp" 2>/dev/null; then \
+		if gh repo view timeflareio/guardian >/dev/null 2>&1; then \
+			echo "❌ $(GUARDIAN_VERSION) has no asset $$asset."; \
+			echo "   The repository is readable, so this is a missing release or a"; \
+			echo "   host/arch with no published binary."; \
+		else \
+			echo "❌ Cannot read timeflareio/guardian."; \
+			echo ""; \
+			echo "   That repository is private, and GitHub answers 404 rather than 403"; \
+			echo "   for a token that cannot see it — so 'not found' here usually means"; \
+			echo "   'not permitted', not 'not released'."; \
+			echo ""; \
+			echo "   In CI the default GITHUB_TOKEN is scoped to this repository only."; \
+			echo "   Fix by making timeflareio/guardian public, or by providing a token"; \
+			echo "   with read access as GH_TOKEN."; \
+			echo ""; \
+			echo "   Locally: check 'gh auth status'."; \
+		fi; \
+		exit 1; \
+	fi; \
 	( cd "$$tmp" && grep " $$asset$$" *checksums.txt | shasum -a 256 -c - ) || { \
 		echo "❌ checksum mismatch for $$asset"; exit 1; }; \
 	install -m 0755 "$$tmp/$$asset" "$(GUARDIAND)"; \
