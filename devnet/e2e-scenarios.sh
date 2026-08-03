@@ -67,6 +67,20 @@ set -euo pipefail
 # release. The Makefile passes it; this default keeps the script runnable alone.
 SDK_DIR="${SDK_DIR:-.devnet/sdk}"
 
+# How long to wait for a restarted guardian to report healthy.
+#
+# S1 kills a daemon and restarts it; S2 then creates a secret expecting the full
+# pool. If the restart has not finished, selection can still pick that guardian —
+# it is registered and eligible on chain — and the secret fails when it never
+# accepts. The scenario continues past this timeout deliberately so it can judge
+# the outcome rather than abort, which means too short a bound does not fail
+# here: it fails later, in a different scenario, looking like a protocol defect.
+#
+# 60s was fine on a developer machine and too short on a CI runner, where exactly
+# that happened. Generous by default; the loop exits as soon as the daemon
+# answers, so a longer bound costs a healthy run nothing.
+GUARDIAN_HEALTH_TIMEOUT="${GUARDIAN_HEALTH_TIMEOUT:-180}"
+
 RPC="${CHAIN_RPC:-http://localhost:26657}"
 DEVNET_DIR=".devnet"
 SCENARIO_DIR="$DEVNET_DIR/scenarios"
@@ -244,14 +258,14 @@ guardians_restart() { # guardian-NN (docker restarts just the victim; native res
 guardian_wait_healthy() { # guardian-NN
     local cfg="$TIMEFLARE_HOME/guardian/$1/config.yaml" waited=0
     [ -f "$cfg" ] || return 0
-    while [ "$waited" -lt 60 ]; do
+    while [ "$waited" -lt "$GUARDIAN_HEALTH_TIMEOUT" ]; do
         if guardiand health --config-path "$cfg" --timeout 3 >/dev/null 2>&1; then
             return 0
         fi
         sleep 1
         waited=$((waited + 1))
     done
-    info "$1 did not report healthy within 60s — continuing, the scenario will judge it"
+    info "$1 did not report healthy within ${GUARDIAN_HEALTH_TIMEOUT}s — continuing, the scenario will judge it"
 }
 
 create_secret() { # manifest offset duration bump

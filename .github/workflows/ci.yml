@@ -162,23 +162,13 @@ jobs:
       - name: Bring up the devnet
         # Blocks are 1s here: lifecycle waits are chain-distance in blocks, so
         # the 6s default would take the suite past 40 minutes.
-        #
-        # GUARDIAN_COUNT is 8, not the local default of 24. That default exists
-        # to give selection a real candidate pool, which is worth having on a
-        # developer machine; on a 2-core runner, 24 guardian processes alongside
-        # the chain starve each other and guardians miss their acceptance
-        # window — the first CI run failed exactly that way, with a secret
-        # reaching 'failed' instead of 'pending'. Eight still clears the
-        # protocol floor (shares + 30%, so 7 for the 5-share e2e config).
         env:
           TIMEFLARE_BLOCK_TIME: 1s
-          GUARDIAN_COUNT: '8'
           GH_TOKEN: ${{ github.token }}
         run: make dev-up
       - name: Run the lifecycle and scenario suites
         env:
           TIMEFLARE_BLOCK_TIME: 1s
-          GUARDIAN_COUNT: '8'
           GH_TOKEN: ${{ github.token }}
         run: |
           make e2e
