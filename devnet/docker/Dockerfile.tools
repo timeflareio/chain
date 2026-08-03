@@ -1,0 +1,35 @@
+# timeflare/tools — devnet init image (chain-init / guardian-init one-shots)
+# (docs/planning/PENDING_CONTAINERISATION_PLAN.md §4)
+#
+# The distroless runtime images have no shell; genesis/key init is the one
+# non-actor kept inside the stack so `make docker-up` is self-contained. This
+# image carries both binaries plus the small shell toolbox the init scripts
+# need (bash, jq, curl, openssl). It is a devnet tool, never a deployment
+# artefact.
+#
+#   docker build -t timeflare/tools:dev -f devnet/docker/Dockerfile.tools .
+
+FROM golang:1.26.5 AS build
+WORKDIR /src
+
+COPY go.mod go.sum go.work go.work.sum ./
+COPY guardian/go.mod guardian/go.sum ./guardian/
+COPY crypto/go.mod crypto/go.sum ./crypto/
+COPY x/secrets/types/go.mod x/secrets/types/go.sum ./x/secrets/types/
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+COPY . .
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -o /out/timeflared ./cmd/timeflared && \
+    CGO_ENABLED=0 go build -C guardian -trimpath -o /out/guardiand ./cmd/guardiand
+
+FROM debian:bookworm-slim
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends bash jq curl openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /out/timeflared /out/guardiand /usr/local/bin/
+
+ENTRYPOINT ["bash"]

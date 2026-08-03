@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Dependabot's github-actions PRs touch only .github/workflows/**. Without a
+  # job that always runs, they would merge with zero CI.
+  workflows:
+    name: Workflow lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run actionlint
+        run: |
+          bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+
+  proto:
+    name: Protobuf (lint + breaking)
+    runs-on: ubuntu-latest
+    env:
+      # 🚀 LAUNCH SWITCH: flip to 'true' at mainnet launch. Pre-launch,
+      # protocol-breaking proto changes are permitted across the board, so
+      # breaking detection reports a warning without failing the job. Once
+      # 'true', wire compatibility against main becomes a hard CI gate.
+      ENFORCE_PROTO_BREAKING: 'false'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Full history so buf can diff against origin/main locally
+          fetch-depth: 0
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ github.token }}
+      - name: Lint protobuf definitions
+        run: buf lint
+      - name: Check for breaking changes
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ "$ENFORCE_PROTO_BREAKING" = "true" ]; then
+            buf breaking --against ".git#branch=origin/main"
+          else
+            buf breaking --against ".git#branch=origin/main" || \
+              echo "::warning::Breaking proto changes detected against main — permitted pre-launch (ENFORCE_PROTO_BREAKING=false); this becomes a hard failure at launch"
+          fi
+
+  chain:
+    name: Chain (verify + test)
+    # Fail-fast: blocked by the seconds-fast checks so a lint failure never
+    # burns the long test run.
+    needs: [proto, workflows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # github.com/timeflareio/crypto is a private repository, and the default
+      # GITHUB_TOKEN cannot read a *different* private repo — so the module
+      # download fails without credentials of its own. A read-only PAT or
+      # deploy key in secrets.CRYPTO_READ_TOKEN unblocks it.
+      #
+      # DELETE THIS STEP when timeflareio/crypto goes public; the module then
+      # resolves through the public proxy with no configuration at all.
+      - name: Configure access to private timeflareio modules
+        env:
+          CRYPTO_READ_TOKEN: ${{ secrets.CRYPTO_READ_TOKEN }}
+        run: |
+          if [ -z "${CRYPTO_READ_TOKEN}" ]; then
+            echo "::error::secrets.CRYPTO_READ_TOKEN is not set. This repository requires github.com/timeflareio/crypto, which is private; Actions' default token cannot read it. Add a read-only token/deploy key as CRYPTO_READ_TOKEN, or make timeflareio/crypto public and delete this step."
+            exit 1
+          fi
+          git config --global \
+            url."https://x-access-token:${CRYPTO_READ_TOKEN}@github.com/".insteadOf \
+            "https://github.com/"
+          echo "GOPRIVATE=github.com/timeflareio/*" >> "$GITHUB_ENV"
+
+      - name: Install golangci-lint (prebuilt release binary)
+        # make verify's fallback compiles golangci-lint from source via
+        # `go install` — minutes on a cold cache. The pinned release binary
+        # installs in seconds; keep the version in lockstep with
+        # GOLANGCI_LINT_VERSION in make/go-quality.mk and .golangci.yml.
+        # Downloaded directly with a pinned sha256: the upstream install.sh
+        # mis-verifies v2 releases (its checksum grep also matches the new
+        # .sbom.json assets by substring).
+        run: |
+          curl -sSfLO --retry 5 --retry-delay 2 --retry-all-errors \
+            https://github.com/golangci/golangci-lint/releases/download/v2.12.2/golangci-lint-2.12.2-linux-amd64.tar.gz
+          echo "8df580d2670fed8fa984aac0507099af8df275e665215f5c7a2ae3943893a553  golangci-lint-2.12.2-linux-amd64.tar.gz" | sha256sum -c -
+          tar xzf golangci-lint-2.12.2-linux-amd64.tar.gz
+          install golangci-lint-2.12.2-linux-amd64/golangci-lint "$(go env GOPATH)/bin/"
+
+      - name: Verify code quality
+        # Step-level env overrides setup-go's GOTOOLCHAIN=local so that
+        # `go install tool@latest` can fetch a newer toolchain for dev
+        # tools (goimports/govulncheck) that now require go >= 1.25.
+        env:
+          GOTOOLCHAIN: auto
+        run: make verify
+
+      - name: Run unit tests
+        run: make test
