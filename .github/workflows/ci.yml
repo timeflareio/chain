@@ -67,26 +67,6 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      # github.com/timeflareio/crypto is a private repository, and the default
-      # GITHUB_TOKEN cannot read a *different* private repo — so the module
-      # download fails without credentials of its own. A read-only PAT or
-      # deploy key in secrets.CRYPTO_READ_TOKEN unblocks it.
-      #
-      # DELETE THIS STEP when timeflareio/crypto goes public; the module then
-      # resolves through the public proxy with no configuration at all.
-      - name: Configure access to private timeflareio modules
-        env:
-          CRYPTO_READ_TOKEN: ${{ secrets.CRYPTO_READ_TOKEN }}
-        run: |
-          if [ -z "${CRYPTO_READ_TOKEN}" ]; then
-            echo "::error::secrets.CRYPTO_READ_TOKEN is not set. This repository requires github.com/timeflareio/crypto, which is private; Actions' default token cannot read it. Add a read-only token/deploy key as CRYPTO_READ_TOKEN, or make timeflareio/crypto public and delete this step."
-            exit 1
-          fi
-          git config --global \
-            url."https://x-access-token:${CRYPTO_READ_TOKEN}@github.com/".insteadOf \
-            "https://github.com/"
-          echo "GOPRIVATE=github.com/timeflareio/*" >> "$GITHUB_ENV"
-
       - name: Install golangci-lint (prebuilt release binary)
         # make verify's fallback compiles golangci-lint from source via
         # `go install` — minutes on a cold cache. The pinned release binary
