@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Go
+coverage.out
+coverage.html
+bin/
+
+# Devnet runtime state (PIDs, logs, test keypairs)
+.devnet/
+
+# Release packaging output
+dist/
