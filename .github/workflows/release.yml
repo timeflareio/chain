@@ -1,0 +1,188 @@
+name: Release
+
+# Releases are deliberate: pushing a vX.Y.Z tag is the only trigger.
+#
+# This repository publishes the most of any component, on TWO tag namespaces.
+# The nested x/secrets/types module is tagged separately as
+# x/secrets/types/vX.Y.Z — that is forced by Go, which requires a nested
+# module's tags to carry its subdirectory prefix, and it is what lets an
+# integrator pin the wire contract without inheriting the node.
+#
+# This workflow handles the chain tag only. A types release is cut by pushing
+# its own tag, which this workflow deliberately ignores.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  verify:
+    name: Verify before releasing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Enforce the version policy
+        # Pre-1.0 by design. For a chain, 1.0.0 is a statement about the
+        # network rather than the code, and published tags cannot be
+        # unpublished — so crossing it is a two-step act: change this guard,
+        # then tag.
+        run: |
+          set -euo pipefail
+          case "${GITHUB_REF_NAME}" in
+            v0.*) echo "✅ ${GITHUB_REF_NAME} is within the 0.x policy" ;;
+            *)
+              echo "::error::${GITHUB_REF_NAME} crosses out of 0.x. For a chain that is a commitment about the network, not the code — see docs/planning/PENDING_RELEASE_STRATEGY_PLAN.md before relaxing this."
+              exit 1
+              ;;
+          esac
+
+      - name: Install golangci-lint (prebuilt release binary)
+        run: |
+          curl -sSfLO --retry 5 --retry-delay 2 --retry-all-errors \
+            https://github.com/golangci/golangci-lint/releases/download/v2.12.2/golangci-lint-2.12.2-linux-amd64.tar.gz
+          echo "8df580d2670fed8fa984aac0507099af8df275e665215f5c7a2ae3943893a553  golangci-lint-2.12.2-linux-amd64.tar.gz" | sha256sum -c -
+          tar xzf golangci-lint-2.12.2-linux-amd64.tar.gz
+          install golangci-lint-2.12.2-linux-amd64/golangci-lint "$(go env GOPATH)/bin/"
+
+      - name: Verify
+        env:
+          GOTOOLCHAIN: auto
+        run: make verify
+
+      - name: Test
+        run: make test
+
+  artefacts:
+    name: Build and publish artefacts
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Cross-compile timeflared
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for target in darwin/arm64 darwin/amd64 linux/arm64 linux/amd64; do
+            os="${target%%/*}"; arch="${target##*/}"
+            out="timeflared-${GITHUB_REF_NAME}-${os}-${arch}"
+            echo "--> ${out}"
+            CGO_ENABLED=0 GOOS="${os}" GOARCH="${arch}" go build -trimpath \
+              -ldflags "-X github.com/cosmos/cosmos-sdk/version.Name=timeflare \
+                        -X github.com/cosmos/cosmos-sdk/version.AppName=timeflare \
+                        -X github.com/cosmos/cosmos-sdk/version.Version=${GITHUB_REF_NAME} \
+                        -X github.com/cosmos/cosmos-sdk/version.Commit=${GITHUB_SHA}" \
+              -o "dist/${out}" ./cmd/timeflared
+          done
+
+      # The guardian shipped a release claiming a version it did not have,
+      # because its stamp silently did nothing. Assert rather than assume.
+      - name: Assert the binaries report this tag
+        run: |
+          set -euo pipefail
+          reported="$("./dist/timeflared-${GITHUB_REF_NAME}-linux-amd64" version 2>&1 | head -1)"
+          echo "reported: ${reported}"
+          if [ "${reported}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::binary reports '${reported}' but this release is '${GITHUB_REF_NAME}'"
+            exit 1
+          fi
+          echo "✅ binaries report ${GITHUB_REF_NAME}"
+
+      # The protocol surface. Both are consumed by other repositories at a
+      # pinned version: the SDK regenerates from the proto tarball, and the SDK
+      # and guardian assert the chain-semantics vectors.
+      - name: Package the protocol surface
+        run: |
+          set -euo pipefail
+          tar -czf "dist/timeflare-proto-${GITHUB_REF_NAME}.tar.gz" proto/
+          tar -czf "dist/timeflare-chain-vectors-${GITHUB_REF_NAME}.tar.gz" testdata/vectors/
+          ( cd testdata/vectors && sha256sum ./*.json ) \
+            > "dist/timeflare-chain-vectors-${GITHUB_REF_NAME}.sha256"
+          ( cd dist && sha256sum timeflared-* ./*.tar.gz > "timeflare-${GITHUB_REF_NAME}-checksums.txt" )
+          ls -la dist/
+
+      - name: Compose release notes
+        run: |
+          set -euo pipefail
+          crypto_ver="$(go list -m -f '{{.Version}}' github.com/timeflareio/crypto)"
+          {
+            echo "## Artefacts"
+            echo
+            echo "| Artefact | How to consume |"
+            echo "|---|---|"
+            echo "| \`timeflared\` binaries | below, with \`checksums.txt\` |"
+            echo "| Container image | \`ghcr.io/timeflareio/timeflared:${GITHUB_REF_NAME}\` (distroless) |"
+            echo "| Proto tarball | \`timeflare-proto-${GITHUB_REF_NAME}.tar.gz\` — the TypeScript SDK regenerates from this |"
+            echo "| Chain-semantics vectors | \`timeflare-chain-vectors-${GITHUB_REF_NAME}.tar.gz\` + \`.sha256\` |"
+            echo
+            echo "The **wire contract** is a separate Go module on its own tag namespace:"
+            echo "\`go get github.com/timeflareio/chain/x/secrets/types@<x/secrets/types tag>\`."
+            echo "It is released independently, so a keeper-only change here does not"
+            echo "oblige integrators to move."
+            echo
+            echo "\`go install\` cannot serve the node: this module carries \`replace\`"
+            echo "directives for the cosmos-sdk pin set, and Go refuses to install any"
+            echo "module whose go.mod has replaces."
+            echo
+            echo "## Built against"
+            echo
+            echo "| Dependency | Version |"
+            echo "|---|---|"
+            echo "| \`crypto\` (primitives) | \`${crypto_ver}\` |"
+            echo
+            echo "## Compatibility"
+            echo
+            echo "See \`COMPATIBILITY.md\` for the guardian, SDK and mobile versions"
+            echo "this release is known to work with. While on 0.x there is no"
+            echo "compatibility promise."
+          } > release-notes.md
+          cat release-notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file release-notes.md \
+            dist/*
+
+  image:
+    name: Build and push the distroless image
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      # .dockerignore excludes .git deliberately (context size), so the version
+      # cannot be derived inside the build — it is passed in.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            COMMIT=${{ github.sha }}
+          tags: ghcr.io/timeflareio/timeflared:${{ github.ref_name }}

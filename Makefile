@@ -25,6 +25,7 @@ include make/go-quality.mk
 include make/go-build.mk
 include make/toolchain.mk
 include make/cleanup.mk
+include make/devnet.mk
 include make/deps.mk
 
 # Project configuration
@@ -35,7 +36,28 @@ CMD_PATH := ./cmd/timeflared
 .DEFAULT_GOAL := help
 
 # Section order for the grouped `make help` output (see make/common.mk)
-HELP_SECTION_ORDER := Getting started|Testing|Build|Code quality|Dependencies|Misc
+HELP_SECTION_ORDER := Getting started|Dev loop|Testing & E2E|Testing|Build|Code quality|Containers|Chain upgrades|Dependencies|Misc
+
+###############################################################################
+###                          Development Environment                       ###
+###############################################################################
+
+##@ Dev loop
+
+## start the blockchain in the foreground (use 'make dev-up' for the full devnet)
+start:
+	@echo "🚀 Starting Timeflare test chain..."
+	@timeflared start $${TIMEFLARE_RETENTION_BLOCKS:+--unsafe-dev-overrides} $${TIMEFLARE_KEY_ROTATION_MIN_INTERVAL:+--unsafe-dev-overrides}
+
+## reset development environment (alias for dev-reset)
+reset: dev-reset
+
+## initialise the test chain (generate genesis keys and set up the chain)
+init-test-chain:
+	@echo "🔐 Generating genesis keys..."
+	@./devnet/chain/generate-genesis-keys.sh
+	@echo "⚙️  Setting up Timeflare test chain..."
+	@./devnet/chain/setup-chain.sh
 
 ###############################################################################
 ###                              Protobuf                                  ###
@@ -138,5 +160,5 @@ download: mod-clean
 ## show module information
 info: mod-info
 
-.PHONY: proto-gen test build install build-binary all
+.PHONY: start reset init-test-chain proto-gen test build install build-binary all
 .PHONY: format verify clean clean-all update-deps tidy download info

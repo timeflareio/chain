@@ -1,0 +1,89 @@
+# Making a protocol change
+
+A protocol change is not done when this repository is green. It is done when
+every component that speaks the protocol has moved.
+
+Inside the monorepo that was one pull request, proven by one `make test`. Across
+repositories it is a release train, and the failure mode is well documented: the
+December 2024 `shareIndex` removal compiled cleanly in the chain and the
+TypeScript SDK and still left the guardian broken, because the guardian sat at
+arm's length. Every component now sits at arm's length. That episode is the
+default topology, not an accident, and this checklist exists because nothing in
+CI will notice for you.
+
+## What counts as a protocol change
+
+Any of these:
+
+- a change under `proto/`
+- a change to `x/secrets/types` that alters the wire contract — message shapes,
+  constants, validation bounds, economics pricing
+- a change to what the cryptographic primitives produce (owned by
+  `timeflareio/crypto`, not this repository)
+- a change to the chain-semantics vectors in `testdata/vectors/`
+
+A keeper-only change that leaves all of the above untouched is not a protocol
+change and does not need this.
+
+## The train
+
+Work down the list. Each step waits for the one above, because each consumes a
+published artefact of it.
+
+**1. This repository — one pull request**
+
+- [ ] `proto/` updated
+- [ ] `x/secrets/types` regenerated and its helpers/constants updated
+- [ ] `docs/spec.md` updated in the *same* PR — it is the protocol authority for
+      every repository, and a spec that trails the code is worse than no spec
+- [ ] `testdata/vectors/` updated if chain semantics moved
+- [ ] `make verify && make test` green
+
+**2. Tag and publish**
+
+- [ ] tag `x/secrets/types/vX.Y.Z` — the wire contract consumers pin
+- [ ] tag `vX.Y.Z` — publishes binaries, image, proto tarball, vectors tarball
+
+Both namespaces are required when the wire contract moved. Tagging only the
+chain leaves consumers unable to pin the change.
+
+**3. `timeflareio/guardian`**
+
+- [ ] bump `github.com/timeflareio/chain/x/secrets/types` to the new tag
+- [ ] `make verify` — which runs `verify-pins`; if the cosmos-sdk pin block moved
+      here, the guardian's must move with it or the two daemons build against
+      different SDK versions
+- [ ] `make vectors-sync` if the chain-semantics vectors changed
+- [ ] release, so the devnet and operators can pin it
+
+**4. `timeflareio/typescript-sdk`**
+
+- [ ] `make proto-sync CHAIN_TAG=vX.Y.Z` and commit the regenerated code
+- [ ] `make vectors-sync` if the vectors changed
+- [ ] release the dist tarball
+
+**5. `timeflareio/mobile-client`**
+
+- [ ] bump the vendored SDK tarball to the new SDK release
+- [ ] re-sync the primitive vectors from `timeflareio/crypto` if those moved —
+      mobile reimplements the primitives natively, so it is the component most
+      exposed to a silent primitive change
+
+**6. Close the loop**
+
+- [ ] add the row to `COMPATIBILITY.md` naming every version that belongs
+      together
+- [ ] `make dev-up && make e2e && make e2e-scenarios` against the *pinned*
+      artefacts, not local builds — that is the first moment anything proves the
+      components still agree
+
+## What this checklist does not do
+
+It does not make the change atomic. Between step 2 and step 5 the components
+disagree, and nothing is red. The checklist, `buf breaking`, `verify-pins` and
+the vector corpora catch a miss *after* the fact rather than making it
+impossible; that trade was made deliberately when the monorepo was split, and it
+is the standing cost of the arrangement.
+
+The mitigation available is speed: a train left half-run is the dangerous state,
+so finish it or revert the tag.

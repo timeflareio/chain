@@ -62,6 +62,11 @@
 
 set -euo pipefail
 
+# The SDK examples this suite drives live in their own repository now. SDK_DIR
+# says where they are: a working tree, or a directory unpacked from a pinned SDK
+# release. The Makefile passes it; this default keeps the script runnable alone.
+SDK_DIR="${SDK_DIR:-.devnet/sdk}"
+
 RPC="${CHAIN_RPC:-http://localhost:26657}"
 DEVNET_DIR=".devnet"
 SCENARIO_DIR="$DEVNET_DIR/scenarios"
@@ -250,7 +255,7 @@ guardian_wait_healthy() { # guardian-NN
 }
 
 create_secret() { # manifest offset duration bump
-    node typescript-sdk/examples/scenario-create.js "$1" "$2" "$3" "$4" >/dev/null
+    node ${SDK_DIR}/examples/scenario-create.js "$1" "$2" "$3" "$4" >/dev/null
     jq -r '.secretId' "$1"
 }
 
@@ -758,7 +763,7 @@ else
 
     COLLECTOR=$(echo "$(cat "$USER_PASSPHRASE_FILE")" | timeflared keys show george -a \
         --keyring-backend file --keyring-dir "$USER_KEYRING")
-    PROOF_JSON=$(node typescript-sdk/examples/rebate-proof.js "$S10" "$COLLECTOR") \
+    PROOF_JSON=$(node ${SDK_DIR}/examples/rebate-proof.js "$S10" "$COLLECTOR") \
         || fatal "S10 could not derive the recipiency proof"
     PROOF=$(echo "$PROOF_JSON" | jq -r '.proof')
     COMMITMENT=$(echo "$PROOF_JSON" | jq -r '.commitment')
@@ -896,7 +901,7 @@ info "S11: funded claim kit — a never-funded address is brought onto the chain
 # See docs/planning/done/DONE_WALLET_BOOTSTRAPPING_PLAN.md §3.
 S11_STATE="$SCENARIO_DIR/s11-courier.json"
 S11_SETUP=$(COURIER_DRILL_STATE="$S11_STATE" \
-    node typescript-sdk/examples/courier-bootstrap.mjs setup 2>&1) \
+    node ${SDK_DIR}/examples/courier-bootstrap.mjs setup 2>&1) \
     || fatal "S11 courier setup failed: $S11_SETUP"
 S11_COURIER=$(echo "$S11_SETUP" | jq -r '.courier')
 S11_SEED=$(echo "$S11_SETUP" | jq -r '.seed')
@@ -917,7 +922,7 @@ assert_eq "$(echo "$S11_FUND" | jq -r '.code // "no-code"')" "0" "S11 courier fu
 wait_height $(( $(height) + 2 ))
 
 if COURIER_DRILL_STATE="$S11_STATE" \
-   node typescript-sdk/examples/courier-bootstrap.mjs verify; then
+   node ${SDK_DIR}/examples/courier-bootstrap.mjs verify; then
     ok "S11 the swept recipient can sign — bootstrapping works end to end"
 else
     fatal "S11 a never-funded recipient could NOT be brought onto the chain"

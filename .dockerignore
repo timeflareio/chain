@@ -1,0 +1,15 @@
+# Build context hygiene (docs/planning/PENDING_CONTAINERISATION_PLAN.md §3):
+# the Go builds need none of these, and excluding them shrinks the context
+# from GBs to MBs. Version info arrives via build args, not .git.
+.git
+.devnet
+.claude
+# NB: docs/ stays in the context — docs/docs.go is a Go package the app
+# imports (it embeds static/openapi.yml)
+docs/planning
+**/*.log
+coverage.out
+coverage.html
+dist
+Dockerfile
+devnet/docker/Dockerfile.tools
