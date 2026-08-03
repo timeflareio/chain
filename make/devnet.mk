@@ -41,11 +41,42 @@ RECIPIENT_KEYPAIR := $(DEVNET_DIR)/recipient-keypair.json
 
 ##@ Dev loop
 
+# Fetches the EXAMPLES bundle specifically. The SDK publishes two tarballs, and
+# the other one — timeflare-sdk-<tag>.tgz — is dist-only and byte-deterministic
+# for consumers that vendor the package. It carries no examples/, so a '*.tgz'
+# glob would match it and leave the harness with nothing to run.
+# The examples are JavaScript with real runtime dependencies (cosmjs, bech32,
+# @noble/hashes). The release bundle ships source, build output and WASM — not
+# node_modules, which would be large and platform-specific — so they have to be
+# installed before anything can run.
+#
+# `npm ci` when a lockfile is present, which is deterministic and what a release
+# bundle should carry. SDK v0.0.1 does not include one, so `npm install` is the
+# fallback; it resolves the same declared ranges, just without the exact-tree
+# guarantee. An SDK release that bundles its lockfile removes the fallback.
+sdk-install:
+	@set -e; \
+	if [ -f "$(SDK_DIR)/package-lock.json" ]; then \
+		echo "📦 Installing SDK dependencies (npm ci — deterministic)"; \
+		( cd "$(SDK_DIR)" && npm ci --omit=dev --silent ); \
+	else \
+		echo "📦 Installing SDK dependencies (npm install — the bundle carries no lockfile)"; \
+		( cd "$(SDK_DIR)" && npm install --omit=dev --silent --no-audit --no-fund ); \
+	fi; \
+	node -e "require('$(CURDIR)/$(SDK_DIR)/node_modules/bech32')" 2>/dev/null || { \
+		echo "❌ dependencies did not install — the examples will not run"; exit 1; }; \
+	echo "✅ SDK dependencies installed"
+
 ## make the SDK examples available to the e2e harness (SDK_DIR=<path> for a working tree)
 sdk-sync:
 	@set -e; \
-	if [ -d "$(SDK_DIR)/examples" ]; then \
+	if [ -d "$(SDK_DIR)/examples" ] && [ -d "$(SDK_DIR)/node_modules" ]; then \
 		echo "📦 Using SDK at $(SDK_DIR)"; exit 0; \
+	fi; \
+	if [ -d "$(SDK_DIR)/examples" ] && [ ! -d "$(SDK_DIR)/node_modules" ]; then \
+		echo "📦 SDK present at $(SDK_DIR) but dependencies are not installed"; \
+		$(MAKE) --no-print-directory sdk-install SDK_DIR="$(SDK_DIR)"; \
+		exit 0; \
 	fi; \
 	if [ -z "$(SDK_VERSION)" ]; then \
 		echo "❌ No SDK available for the e2e harness."; \
@@ -62,8 +93,11 @@ sdk-sync:
 	mkdir -p "$(SDK_DIR)"; \
 	tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
 	gh release download "$(SDK_VERSION)" --repo timeflareio/typescript-sdk \
-		--pattern '*.tgz' --dir "$$tmp"; \
-	tar -xzf "$$tmp"/*.tgz -C "$(SDK_DIR)" --strip-components=1; \
+		--pattern 'timeflare-sdk-examples-*.tar.gz' --dir "$$tmp"; \
+	tar -xzf "$$tmp"/timeflare-sdk-examples-*.tar.gz -C "$(SDK_DIR)" --strip-components=1; \
+	test -f "$(SDK_DIR)/examples/secret-lifecycle.js" || { \
+		echo "❌ the bundle did not contain examples/ — wrong asset?"; exit 1; }; \
+	$(MAKE) --no-print-directory sdk-install SDK_DIR="$(SDK_DIR)"; \
 	echo "✅ SDK $(SDK_VERSION) ready at $(SDK_DIR)"
 
 ## fetch the pinned guardiand release binary (or use GUARDIAND_BIN=<path>)
@@ -302,4 +336,4 @@ e2e-full-native:
 	else echo "❌ Full E2E failed (exit $$status) — chain state kept in ~/.timeflare for inspection"; fi; \
 	exit $$status
 
-.PHONY: guardiand-sync sdk-sync dev-up dev-down dev-reset dev-status faucet e2e e2e-scenarios e2e-full-native
+.PHONY: guardiand-sync sdk-sync sdk-install dev-up dev-down dev-reset dev-status faucet e2e e2e-scenarios e2e-full-native
