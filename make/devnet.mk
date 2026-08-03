@@ -254,7 +254,10 @@ e2e: sdk-sync
 		node $(E2E_KEYGEN) $(RECIPIENT_KEYPAIR); \
 	fi
 	@echo "🧪 Running secret lifecycle end-to-end test..."
-	@node $(E2E_TEST)
+	@# RECIPIENT_KEYPAIR is exported explicitly: the SDK examples fall back to a
+	@# path relative to their own tree (<sdk>/../../.devnet), which was this
+	@# repository inside the monorepo and is not any more.
+	@RECIPIENT_KEYPAIR=$(CURDIR)/$(RECIPIENT_KEYPAIR) node $(E2E_TEST)
 
 ## run the failure-path scenario suite against the running devnet (no-show slash, mid-hold cancel, early-reveal report)
 e2e-scenarios: sdk-sync
@@ -268,7 +271,7 @@ e2e-scenarios: sdk-sync
 		node $(E2E_KEYGEN) $(RECIPIENT_KEYPAIR); \
 	fi
 	@echo "🧪 Running failure-path scenario suite..."
-	@./devnet/e2e-scenarios.sh
+	@RECIPIENT_KEYPAIR=$(CURDIR)/$(RECIPIENT_KEYPAIR) SDK_DIR=$(SDK_DIR) ./devnet/e2e-scenarios.sh
 
 ## full E2E on the NATIVE devnet: fresh fast-block chain → lifecycle → teardown (fallback when Docker is unavailable; `make e2e-full` targets the compose stack)
 e2e-full-native:
