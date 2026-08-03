@@ -23,3 +23,10 @@ devnet/chain/genesis-addresses.conf
 # the BSR and never reads this tree (buf.yaml declares only `modules: proto`).
 # Committing it creates ~200 files that can silently drift from buf.lock.
 third_party/
+
+# Devnet claim lock. There is one devnet on this machine — ~/.timeflare, the
+# installed timeflared and the running node are machine-global — so concurrent
+# sessions (including a monorepo checkout) coordinate through this file before
+# dev-up, dev-reset, e2e or anything else that drives the chain. It is
+# coordination between sessions, not history: it must never reach a branch.
+chain.lock

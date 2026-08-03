@@ -25,6 +25,7 @@ include make/go-quality.mk
 include make/go-build.mk
 include make/toolchain.mk
 include make/cleanup.mk
+include make/devnet.mk
 include make/deps.mk
 
 # Project configuration
