@@ -139,9 +139,9 @@ to pick up the dev parameters.
 
 ## End-to-end test
 
-`make e2e` runs `typescript-sdk/examples/secret-lifecycle.js` against the
-running devnet and verifies the **complete** lifecycle strictly (non-zero exit
-on any stage failure):
+`make e2e` runs the SDK's `examples/secret-lifecycle.js` against the running
+devnet and verifies the **complete** lifecycle strictly (non-zero exit on any
+stage failure):
 
 1. Secret creation and share distribution (three-phase commit)
 2. Guardian acceptance up to the threshold
@@ -163,12 +163,26 @@ asserted to the exact uveil via `block_results`/`tx` events. Run it against a
 fresh fast-block devnet (`TIMEFLARE_BLOCK_TIME=2s make dev-reset`) — the two
 reveal-window waits take ~20 minutes at the default 6-second blocks.
 
-Note the guardian maths: the protocol assigns `shares + 30% buffer` distinct
-guardians, so the default e2e config (5 shares) needs at least 7 registered.
-`GUARDIAN_COUNT` defaults to 24 — comfortably above that floor, so selection
-runs against a real candidate pool rather than the bare minimum. Related SDK
-examples live in `typescript-sdk/examples/` (`monitor-secrets.js`,
-`generate-keypair.js`).
+**Where the examples come from.** They are not in this repository. `make e2e`
+and `make e2e-scenarios` run the examples from the `timeflareio/typescript-sdk`
+release pinned in `devnet/versions.env`, which `make sdk-sync` unpacks to
+`.devnet/sdk/`. `SDK_DIR=/path/to/typescript-sdk` points at a working tree
+instead, for cross-repo development. The related examples
+(`monitor-secrets.js`, `generate-keypair.js`) live there too.
+
+**The guardian maths.** The protocol selects **exactly** `max_shares` guardians
+and fails outright if fewer are eligible — there is no over-selection buffer
+(see `docs/spec.md`, "The `[min_shares, max_shares]` band"). So the default e2e
+config (5 shares) needs 5 eligible, not 7.
+
+`GUARDIAN_COUNT` defaults to 24, far above that floor, so selection runs against
+a real candidate pool — availability windows, bond affordability, concurrency
+caps — rather than the bare minimum. It does **not** buy acceptance redundancy:
+with exactly `max_shares` selected and a zero-width band needing all of them,
+one unhealthy daemon in a pool of N is a `max_shares/N` chance of sinking any
+given secret. A bigger pool lowers that probability and never removes it. Only a
+band with width (`max_shares > min_shares`) tolerates an unresponsive guardian,
+and that is the creator's choice, not a devnet setting.
 
 ## Mobile clients on this devnet
 

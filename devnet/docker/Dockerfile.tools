@@ -1,5 +1,4 @@
 # timeflare/tools — devnet init image (chain-init / guardian-init one-shots)
-# (docs/planning/PENDING_CONTAINERISATION_PLAN.md §4)
 #
 # The distroless runtime images have no shell; genesis/key init is the one
 # non-actor kept inside the stack so `make docker-up` is self-contained. This
@@ -7,29 +6,53 @@
 # need (bash, jq, curl, openssl). It is a devnet tool, never a deployment
 # artefact.
 #
-#   docker build -t timeflare/tools:dev -f devnet/docker/Dockerfile.tools .
+#   make docker-build          # preferred: passes the pinned GUARDIAN_IMAGE
+#
+# timeflared is built from source here. guardiand is NOT: there is no guardian
+# source in this repository, so it comes from the released image at the version
+# pinned in devnet/versions.env — the same artefact the stack's guardian
+# containers run, which is the point of pinning it. Compiling it here required
+# the monorepo's workspace layout (go.work, guardian/, crypto/), and this file is
+# where that assumption survived the split longest: only the DOCKER_PREBUILT path
+# was ever exercised, so nothing noticed.
 
-FROM golang:1.26.5 AS build
+# The pinned guardian release image, supplied by make/docker.mk so the version
+# lives in exactly one place. The default keeps a bare `docker build -f` working,
+# but it floats — prefer the make target.
+#
+# Declared HERE, before any FROM: an ARG used in a FROM must be in the global
+# scope. Declared inside a stage it is invisible to FROM, which fails with
+# "base name (${GUARDIAN_IMAGE}) should not be blank".
+ARG GUARDIAN_IMAGE=ghcr.io/timeflareio/guardiand:latest
+
+# --platform=$BUILDPLATFORM keeps the compiler on the build machine and
+# cross-compiles to $TARGETARCH, as the release Dockerfile does. Emulating the
+# target instead compiles the whole cosmos-sdk graph under QEMU.
+FROM --platform=$BUILDPLATFORM golang:1.26.5 AS build
 WORKDIR /src
 
-COPY go.mod go.sum go.work go.work.sum ./
-COPY guardian/go.mod guardian/go.sum ./guardian/
-COPY crypto/go.mod crypto/go.sum ./crypto/
+# Module graph first so source edits don't re-download modules. The nested types
+# module is named because the root go.mod's replace points at it. There is no
+# go.work: the workspace is deliberately not part of this repository.
+COPY go.mod go.sum ./
 COPY x/secrets/types/go.mod x/secrets/types/go.sum ./x/secrets/types/
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 COPY . .
 
+ARG TARGETARCH
 RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath -o /out/timeflared ./cmd/timeflared && \
-    CGO_ENABLED=0 go build -C guardian -trimpath -o /out/guardiand ./cmd/guardiand
+    --mount=type=cache,target=/root/.cache/go-build,id=go-build-$TARGETARCH \
+    CGO_ENABLED=0 GOARCH=$TARGETARCH go build -trimpath -o /out/timeflared ./cmd/timeflared
+
+FROM ${GUARDIAN_IMAGE} AS guardian
 
 FROM debian:bookworm-slim
 RUN apt-get update && \
     apt-get install -y --no-install-recommends bash jq curl openssl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /out/timeflared /out/guardiand /usr/local/bin/
+COPY --from=build /out/timeflared /usr/local/bin/
+COPY --from=guardian /usr/local/bin/guardiand /usr/local/bin/
 
 ENTRYPOINT ["bash"]
