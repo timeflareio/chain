@@ -100,8 +100,12 @@ docker-build:
 	@echo "🐳 Pulling $(GUARDIAN_IMAGE) -> timeflare/guardiand:$(DOCKER_IMAGE_TAG)..."
 	@docker pull -q $(GUARDIAN_IMAGE)
 	@docker tag $(GUARDIAN_IMAGE) timeflare/guardiand:$(DOCKER_IMAGE_TAG)
+	@# The tools image takes guardiand from the released image rather than
+	@# compiling it — there is no guardian source here. GUARDIAN_IMAGE is passed
+	@# so the pinned version is stated once, in devnet/versions.env.
 	@echo "🐳 Building timeflare/tools:$(DOCKER_IMAGE_TAG)..."
-	@docker build -t timeflare/tools:$(DOCKER_IMAGE_TAG) -f devnet/docker/Dockerfile.tools $(DOCKER_BUILD_EXTRA_ARGS) .
+	@docker build -t timeflare/tools:$(DOCKER_IMAGE_TAG) -f devnet/docker/Dockerfile.tools \
+		--build-arg GUARDIAN_IMAGE=$(GUARDIAN_IMAGE) $(DOCKER_BUILD_EXTRA_ARGS) .
 	@docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}' | grep '^timeflare/'
 endif
 
