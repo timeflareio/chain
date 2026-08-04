@@ -220,7 +220,10 @@ func ProRataCancellationPayout(rewardPool math.Int, distance, maxShares, elapsed
 	return rewardPool.Mul(math.NewInt(elapsed)).Quo(denominator)
 }
 
-// EntryFee returns the one-off registration fee (burned) as an Int.
+// EntryFee returns the one-off registration fee as an Int. It is charged into
+// the fee collector and rides the next block's 90/10 split — 90% allocated to
+// validator rewards, 10% burned — and is never returned. See docs/spec.md
+// "Guardian Registration".
 func EntryFee() math.Int {
 	return math.NewInt(EntryFeeAmount)
 }

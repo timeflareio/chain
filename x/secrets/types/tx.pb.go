@@ -744,8 +744,10 @@ func (m *MsgGuardianConfirmSharesResponse) GetLockedIn() bool {
 }
 
 // MsgGuardianRegister defines the MsgGuardianRegister message for new guardian registration only.
-// Registration charges the protocol entry fee (burned) from the guardian's account in
-// addition to any initial float deposit.
+// Registration charges the protocol entry fee from the guardian's account into
+// the fee collector, where it rides the next block's 90/10 fee split — 90%
+// allocated to validator rewards, 10% burned. It is never returned, and is
+// charged in addition to any initial float deposit.
 type MsgGuardianRegister struct {
 	Guardian            string      `protobuf:"bytes,1,opt,name=guardian,proto3" json:"guardian,omitempty"`
 	EncryptionPublicKey []byte      `protobuf:"bytes,2,opt,name=encryption_public_key,json=encryptionPublicKey,proto3" json:"encryption_public_key,omitempty"`
@@ -1211,7 +1213,7 @@ var xxx_messageInfo_MsgSlashGuardianResponse proto.InternalMessageInfo
 
 // MsgGuardianWithdrawStake defines the MsgGuardianWithdrawStake message for guardians to withdraw
 // their unlocked float. Bonds for in-flight secrets remain locked; the guardian
-// record persists (registration is permanent — the entry fee is burned).
+// record persists (registration is permanent — the entry fee is never returned).
 type MsgGuardianWithdrawStake struct {
 	Guardian string `protobuf:"bytes,1,opt,name=guardian,proto3" json:"guardian,omitempty"`
 }
