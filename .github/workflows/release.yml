@@ -104,9 +104,18 @@ jobs:
           fi
           echo "✅ binaries report ${GITHUB_REF_NAME}"
 
-      # The protocol surface. Both are consumed by other repositories at a
-      # pinned version: the SDK regenerates from the proto tarball, and the SDK
-      # and guardian assert the chain-semantics vectors.
+      # The protocol surface.
+      #
+      # The vectors tarball IS consumed at a pinned version: the SDK, the
+      # guardian and the mobile client all assert the chain-semantics files
+      # against its per-file manifest.
+      #
+      # The proto tarball currently has no consumer. It carries proto/ alone, and
+      # buf needs buf.yaml and buf.lock from the repository root to generate — so
+      # the SDK regenerates from the tagged source archive instead. Published
+      # because the definitions are the protocol surface and an integrator
+      # generating their own bindings wants them at a pinned version; see TODO.md
+      # for the choice between making it self-sufficient and dropping it.
       - name: Package the protocol surface
         run: |
           set -euo pipefail
@@ -128,7 +137,7 @@ jobs:
             echo "|---|---|"
             echo "| \`timeflared\` binaries | below, with \`checksums.txt\` |"
             echo "| Container image | \`ghcr.io/timeflareio/timeflared:${GITHUB_REF_NAME}\` (distroless) |"
-            echo "| Proto tarball | \`timeflare-proto-${GITHUB_REF_NAME}.tar.gz\` — the TypeScript SDK regenerates from this |"
+            echo "| Proto tarball | \`timeflare-proto-${GITHUB_REF_NAME}.tar.gz\` — the protocol definitions, for integrators generating their own bindings |"
             echo "| Chain-semantics vectors | \`timeflare-chain-vectors-${GITHUB_REF_NAME}.tar.gz\` + \`.sha256\` |"
             echo
             echo "The **wire contract** is a separate Go module on its own tag namespace:"
