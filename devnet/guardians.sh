@@ -58,7 +58,6 @@ BASE_DASHBOARD_PORT="${BASE_DASHBOARD_PORT:-21200}"
 # the dev path exercises the authentication code that ships rather than a bypass
 # — an escape hatch is a thing that can be left on in production. The cost is
 # per-origin: a first visit to all 24 dashboards means 24 browser prompts.
-DASHBOARD_PASSWORD="${DASHBOARD_PASSWORD:-timeflare-devnet}"
 
 # Runtime state (PIDs, logs, registry) — gitignored
 RUNTIME_DIR="$REPO_ROOT/.devnet/guardians"
@@ -174,7 +173,8 @@ prepare_one() {
             --keyring-dir "$keyring_dir" \
             --keyring-passphrase "$passphrase" \
             --encryption-key-passphrase "$GUARDIAN_KEY_PASSPHRASE" \
-            --auto-generate-key >/dev/null
+            --auto-generate-key \
+            --non-interactive >/dev/null
         guardianctl config set --config-path "$config_file" keyring-passphrase "$passphrase_file" >/dev/null
         guardianctl config set --config-path "$config_file" chain-id "$CHAIN_ID" >/dev/null
         guardianctl config set --config-path "$config_file" rpc-endpoint "$RPC_ENDPOINT" >/dev/null
@@ -362,10 +362,6 @@ start_one() {
     guardianctl config set --config-path "$config_file" health-port "$health_port" >/dev/null
     guardianctl config set --config-path "$config_file" metrics-port "$metrics_port" >/dev/null
     guardianctl config set --config-path "$config_file" dashboard-port "$dashboard_port" >/dev/null
-    # --stdin rather than a hash constant, so the credential the docs quote is
-    # demonstrably the credential the devnet uses.
-    printf '%s' "$DASHBOARD_PASSWORD" | guardianctl config set-dashboard-password \
-        --config-path "$config_file" --stdin >/dev/null
 
     guardiand start --config-path "$config_file" > "$log_file" 2>&1 &
     echo $! > "$pid_file"
