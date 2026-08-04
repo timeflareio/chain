@@ -4,10 +4,21 @@
 # Runtime state (PIDs, logs) lives in .devnet/ which is gitignored.
 # Chain data lives in ~/.timeflare as before.
 
-# Default guardian count: the protocol assigns shares + 30% buffer distinct
-# guardians, so the default e2e config (5 shares) needs at least 7 registered.
-# The default is set well above that floor so selection has a real candidate
-# pool (bond affordability filtering, concurrency caps) to work against.
+# Default guardian count. The floor is max_shares: the protocol selects EXACTLY
+# that many candidates and fails outright if fewer are eligible — there is no
+# over-selection constant (spec.md, "The [min_shares, max_shares] band"). So the
+# default e2e config (5 shares) needs 5 eligible, not 7.
+#
+# The default sits far above that floor so selection has a real candidate pool to
+# work against — availability windows, bond affordability, concurrency caps.
+#
+# A larger pool does NOT add acceptance redundancy, and it is worth being clear
+# about that because the arithmetic is counter-intuitive: since exactly
+# max_shares are selected and a zero-width band needs all of them to accept, one
+# unhealthy daemon in a pool of N is a max_shares/N chance of killing any given
+# secret. Growing N lowers that probability per secret but never removes it. The
+# only thing that tolerates an unresponsive guardian is a band with width
+# (max_shares > min_shares), which is the creator's choice, not a devnet knob.
 GUARDIAN_COUNT ?= 24
 DEVNET_DIR     := .devnet
 DEVNET_BIN     := $(DEVNET_DIR)/bin
