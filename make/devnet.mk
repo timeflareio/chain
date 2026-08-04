@@ -26,13 +26,15 @@ CHAIN_PID_FILE := $(DEVNET_DIR)/chain.pid
 CHAIN_LOG_FILE := $(DEVNET_DIR)/chain.log
 
 # Pinned component versions (devnet/versions.env). The guardian is no longer
-# built from a sibling directory — the devnet runs the released binary, which is
-# what an operator would run. GUARDIAND_BIN overrides with a local build for
-# cross-repo work.
+# built from a sibling directory — the devnet runs the released binaries, which is
+# what an operator would run. GUARDIAND_BIN/GUARDIANCTL_BIN override with local
+# builds for cross-repo work, and must be passed together.
 include devnet/versions.env
-GUARDIAND_BIN  ?=
-GUARDIAND      := $(DEVNET_BIN)/guardiand
-CHAIN_RPC      ?= http://localhost:26657
+GUARDIAND_BIN   ?=
+GUARDIANCTL_BIN ?=
+GUARDIAND       := $(DEVNET_BIN)/guardiand
+GUARDIANCTL     := $(DEVNET_BIN)/guardianctl
+CHAIN_RPC       ?= http://localhost:26657
 
 # Orchestration scripts (thin wrappers around timeflared / guardiand)
 # PATH is scoped to the synced binary so the devnet cannot silently pick up a
@@ -118,40 +120,55 @@ sdk-sync:
 	$(MAKE) --no-print-directory sdk-install SDK_DIR="$(SDK_DIR)"; \
 	echo "✅ SDK $(SDK_VERSION) ready at $(SDK_DIR)"
 
-## fetch the pinned guardiand release binary (or use GUARDIAND_BIN=<path>)
+## fetch the pinned guardian binaries (or use GUARDIAND_BIN=/GUARDIANCTL_BIN=<path>)
+#
+# TWO binaries since guardian v0.0.4 split its surface: guardiand runs the service
+# (start, health) and guardianctl holds everything that sets a guardian up or can
+# write key material (config, register, rotate-key, wallet, key, status, update).
+# The devnet needs both — guardians.sh configures and registers with one and runs
+# the other — and they must come from the SAME release, or the tool and the daemon
+# disagree about the config schema they share.
 guardiand-sync:
 	@set -e; \
 	mkdir -p $(DEVNET_BIN); \
-	if [ -n "$(GUARDIAND_BIN)" ]; then \
-		if [ ! -x "$(GUARDIAND_BIN)" ]; then \
-			echo "❌ GUARDIAND_BIN=$(GUARDIAND_BIN) is not an executable"; exit 1; \
+	if [ -n "$(GUARDIAND_BIN)" ] || [ -n "$(GUARDIANCTL_BIN)" ]; then \
+		if [ -z "$(GUARDIAND_BIN)" ] || [ -z "$(GUARDIANCTL_BIN)" ]; then \
+			echo "❌ Pass BOTH GUARDIAND_BIN and GUARDIANCTL_BIN, or neither."; \
+			echo "   Mixing a local build of one with a released copy of the other is"; \
+			echo "   the failure this refuses to make easy: they share a config schema."; \
+			exit 1; \
 		fi; \
-		cp "$(GUARDIAND_BIN)" "$(GUARDIAND)"; \
-		echo "👮 Using local guardiand: $(GUARDIAND_BIN) ($$("$(GUARDIAND)" version | awk '/^Version:/{print $$2}'))"; \
+		for pair in "$(GUARDIAND_BIN):$(GUARDIAND)" "$(GUARDIANCTL_BIN):$(GUARDIANCTL)"; do \
+			src="$${pair%%:*}"; dst="$${pair##*:}"; \
+			if [ ! -x "$$src" ]; then echo "❌ $$src is not an executable"; exit 1; fi; \
+			cp "$$src" "$$dst"; \
+		done; \
+		echo "👮 Using local guardian binaries ($$("$(GUARDIAND)" version | awk '/^Version:/{print $$2}') / $$("$(GUARDIANCTL)" version | awk '/^Version:/{print $$2}'))"; \
 		exit 0; \
 	fi; \
 	if [ -z "$(GUARDIAN_VERSION)" ]; then \
 		echo "❌ GUARDIAN_VERSION is unset in devnet/versions.env"; exit 1; \
 	fi; \
-	have=""; \
-	if [ -x "$(GUARDIAND)" ]; then \
-		have=$$("$(GUARDIAND)" version 2>/dev/null | awk '/^Version:/{print $$2}'); \
-	fi; \
-	if [ "$$have" = "$(GUARDIAN_VERSION)" ]; then \
-		echo "👮 guardiand $(GUARDIAN_VERSION) already present"; exit 0; \
+	have_d=""; have_c=""; \
+	if [ -x "$(GUARDIAND)" ]; then have_d=$$("$(GUARDIAND)" version 2>/dev/null | awk '/^Version:/{print $$2}'); fi; \
+	if [ -x "$(GUARDIANCTL)" ]; then have_c=$$("$(GUARDIANCTL)" version 2>/dev/null | awk '/^Version:/{print $$2}'); fi; \
+	if [ "$$have_d" = "$(GUARDIAN_VERSION)" ] && [ "$$have_c" = "$(GUARDIAN_VERSION)" ]; then \
+		echo "👮 guardiand + guardianctl $(GUARDIAN_VERSION) already present"; exit 0; \
 	fi; \
 	os=$$(uname -s | tr 'A-Z' 'a-z'); \
 	arch=$$(uname -m); \
 	case "$$arch" in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; \
-	asset="guardiand-$(GUARDIAN_VERSION)-$$os-$$arch"; \
-	echo "👮 Fetching $$asset from timeflareio/guardian@$(GUARDIAN_VERSION)"; \
 	tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+	echo "👮 Fetching guardiand + guardianctl $(GUARDIAN_VERSION)-$$os-$$arch from timeflareio/guardian"; \
 	if ! gh release download "$(GUARDIAN_VERSION)" --repo timeflareio/guardian \
-		--pattern "$$asset" --pattern "*checksums.txt" --dir "$$tmp" 2>/dev/null; then \
+		--pattern "guardiand-$(GUARDIAN_VERSION)-$$os-$$arch" \
+		--pattern "guardianctl-$(GUARDIAN_VERSION)-$$os-$$arch" \
+		--pattern "*checksums.txt" --dir "$$tmp" 2>/dev/null; then \
 		if gh repo view timeflareio/guardian >/dev/null 2>&1; then \
-			echo "❌ $(GUARDIAN_VERSION) has no asset $$asset."; \
-			echo "   The repository is readable, so this is a missing release or a"; \
-			echo "   host/arch with no published binary."; \
+			echo "❌ $(GUARDIAN_VERSION) is missing an asset for $$os-$$arch."; \
+			echo "   The repository is readable, so this is a missing release, a"; \
+			echo "   host/arch with no published binary, or a release predating the"; \
+			echo "   guardiand/guardianctl split (v0.0.4)."; \
 		else \
 			echo "❌ Cannot read timeflareio/guardian."; \
 			echo ""; \
@@ -167,14 +184,17 @@ guardiand-sync:
 		fi; \
 		exit 1; \
 	fi; \
-	( cd "$$tmp" && grep " $$asset$$" *checksums.txt | shasum -a 256 -c - ) || { \
-		echo "❌ checksum mismatch for $$asset"; exit 1; }; \
-	install -m 0755 "$$tmp/$$asset" "$(GUARDIAND)"; \
-	got=$$("$(GUARDIAND)" version | awk '/^Version:/{print $$2}'); \
-	if [ "$$got" != "$(GUARDIAN_VERSION)" ]; then \
-		echo "❌ downloaded binary reports $$got, expected $(GUARDIAN_VERSION)"; exit 1; \
-	fi; \
-	echo "✅ guardiand $(GUARDIAN_VERSION) ready"
+	for bin in guardiand guardianctl; do \
+		asset="$$bin-$(GUARDIAN_VERSION)-$$os-$$arch"; \
+		( cd "$$tmp" && grep " $$asset$$" *checksums.txt | shasum -a 256 -c - ) || { \
+			echo "❌ checksum mismatch for $$asset"; exit 1; }; \
+		install -m 0755 "$$tmp/$$asset" "$(DEVNET_BIN)/$$bin"; \
+		got=$$("$(DEVNET_BIN)/$$bin" version | awk '/^Version:/{print $$2}'); \
+		if [ "$$got" != "$(GUARDIAN_VERSION)" ]; then \
+			echo "❌ $$bin reports $$got, expected $(GUARDIAN_VERSION)"; exit 1; \
+		fi; \
+	done; \
+	echo "✅ guardiand + guardianctl $(GUARDIAN_VERSION) ready"
 
 
 ## start the full local devnet (chain + $(GUARDIAN_COUNT) guardians + funded test user)

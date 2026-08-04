@@ -8,7 +8,7 @@
 #
 #   make docker-build          # preferred: passes the pinned GUARDIAN_IMAGE
 #
-# timeflared is built from source here. guardiand is NOT: there is no guardian
+# timeflared is built from source here. The guardian binaries are NOT: there is no guardian
 # source in this repository, so it comes from the released image at the version
 # pinned in devnet/versions.env — the same artefact the stack's guardian
 # containers run, which is the point of pinning it. Compiling it here required
@@ -53,6 +53,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /out/timeflared /usr/local/bin/
-COPY --from=guardian /usr/local/bin/guardiand /usr/local/bin/
+# Both: init-guardians.sh configures and registers with guardianctl, and the
+# image is also how an operator reaches either verb set without a host install.
+COPY --from=guardian /usr/local/bin/guardiand /usr/local/bin/guardianctl /usr/local/bin/
 
 ENTRYPOINT ["bash"]

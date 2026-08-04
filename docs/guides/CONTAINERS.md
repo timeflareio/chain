@@ -165,7 +165,7 @@ docker run --rm -it -v guardian-data:/home/nonroot/.timeflare/guardian \
   --key-name myguardian --keyring-backend file --auto-generate-key
 
 # 2. Create the signing (wallet) key in the same keyring. The image ships
-#    no timeflared and needs none: 'guardiand wallet' derives at the
+#    no timeflared and needs none: 'guardianctl wallet' derives at the
 #    chain's HD path (m/44'/9733'/0'/0/0), so the 24 words shown once here
 #    restore the same account in any Timeflare wallet. Write them down and
 #    store them off-host — they are the only recovery for the key and its
@@ -204,14 +204,14 @@ docker run --rm -it -v guardian-data:/home/nonroot/.timeflare/guardian \
 
 Every config key has a `GUARDIAN_<KEY>` env override (precedence: flags >
 env > file > defaults) — a container needs no config file at all if it
-prefers pure env. Register with `guardiand register` (run once, same volume).
+prefers pure env. Register with `guardianctl register` (run once, same volume).
 **The operator dashboard needs a credential in a container.** `guardiand` serves
 its read-only dashboard on 21200, on the same `bind_address` as health and
 metrics (`0.0.0.0` by default). The page names bond exposure, key fingerprints,
 encrypted-at-rest status — including a plaintext-key warning that tells an
 attacker which guardians are worth attacking — and the full config, so beyond
 loopback it authenticates: HTTP Basic as user `guardian`, against the bcrypt
-hash in `dashboard_password_hash`. Set it with `guardiand config
+hash in `dashboard_password_hash`. Set it with `guardianctl config
 set-dashboard-password` (`--generate` for a strong one, printed once; `--stdin`
 to provision a chosen one from a build script). `GUARDIAN_DASHBOARD_PASSWORD_HASH`
 works too — the hash is not a secret, which is why the plaintext never goes

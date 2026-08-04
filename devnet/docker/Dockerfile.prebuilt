@@ -14,7 +14,7 @@
 # with its pinned toolchain.
 #
 # Build context: a staging directory containing just `timeflared` and
-# `guardiand` (linux, CGO_ENABLED=0). Driven by `make docker-build
+# `guardiand` + `guardianctl` (linux, CGO_ENABLED=0). Driven by `make docker-build
 # DOCKER_PREBUILT=1`; select images with --target.
 
 FROM gcr.io/distroless/static-debian12:nonroot AS timeflared
@@ -42,7 +42,10 @@ LABEL org.opencontainers.image.title="guardiand" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}"
 
-COPY guardiand /usr/local/bin/guardiand
+# Both binaries: guardiand is the entrypoint, guardianctl is reached with
+# `docker run --entrypoint guardianctl …` and is what init-guardians.sh uses
+# to configure and register.
+COPY guardiand guardianctl /usr/local/bin/
 
 # health, metrics
 EXPOSE 21000 21100
@@ -56,6 +59,6 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends bash jq curl openssl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-COPY timeflared guardiand /usr/local/bin/
+COPY timeflared guardiand guardianctl /usr/local/bin/
 
 ENTRYPOINT ["bash"]

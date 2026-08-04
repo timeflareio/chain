@@ -445,14 +445,32 @@ fi
 # binary answered: a stale globally installed guardiand from another checkout
 # would otherwise be indistinguishable from the pinned one in the log.
 if [ "$GUARDIAN_CONTROL" = "native" ]; then
-    if ! command -v guardiand >/dev/null 2>&1; then
-        echo "❌ guardiand is not on PATH."
-        echo "   This suite restarts guardian daemons and probes their health."
-        echo "   Run it via 'make e2e-scenarios', which puts the pinned binary"
-        echo "   (.devnet/bin/guardiand, synced by 'make guardiand-sync') on PATH."
+    # BOTH binaries, and their versions printed. S1 and S8 restart daemons and probe
+    # health through guardiand; S8 also rotates a key through guardianctl. A missing
+    # guardianctl would surface only when S8 runs, minutes in, as a command-not-found
+    # inside a scenario rather than as a precondition.
+    for bin in guardiand guardianctl; do
+        if ! command -v "$bin" >/dev/null 2>&1; then
+            echo "❌ $bin is not on PATH."
+            echo "   This suite restarts guardian daemons, probes their health, and"
+            echo "   rotates a key — the first two through guardiand, the last through"
+            echo "   guardianctl."
+            echo "   Run it via 'make e2e-scenarios', which puts the pinned binaries"
+            echo "   (.devnet/bin, synced by 'make guardiand-sync') on PATH."
+            exit 1
+        fi
+    done
+    dv=$(guardiand version 2>/dev/null | awk '/^Version:/{print $2}')
+    cv=$(guardianctl version 2>/dev/null | awk '/^Version:/{print $2}')
+    info "guardiand: $(command -v guardiand) ($dv)"
+    info "guardianctl: $(command -v guardianctl) ($cv)"
+    # They share a config schema, so a mismatched pair is a real hazard rather than
+    # untidiness — one writes a file the other cannot read.
+    if [ "$dv" != "$cv" ]; then
+        echo "❌ guardiand ($dv) and guardianctl ($cv) are from different releases."
+        echo "   They share the configuration schema; run 'make guardiand-sync'."
         exit 1
     fi
-    info "guardiand: $(command -v guardiand) ($(guardiand version 2>/dev/null | awk '/^Version:/{print $2}'))"
 fi
 
 # community_pool_total sums the community pool in uveil (decimal — DecCoins
@@ -764,7 +782,7 @@ if [ -z "${TIMEFLARE_KEY_ROTATION_MIN_INTERVAL:-}" ]; then
     info "S8: key rotation — SKIPPED (chain running with the production ~30-day interval;"
     info "    rerun with TIMEFLARE_KEY_ROTATION_MIN_INTERVAL=30 on both dev-reset and this suite)"
 elif [ "$GUARDIAN_CONTROL" != "native" ]; then
-    info "S8: key rotation — SKIPPED (guardiand rotate-key drives native guardian homes;"
+    info "S8: key rotation — SKIPPED (guardianctl rotate-key drives native guardian homes;"
     info "    GUARDIAN_CONTROL=$GUARDIAN_CONTROL)"
 else
 info "S8: key rotation — forward-only mid-life rotation, both epochs served"
@@ -792,10 +810,10 @@ OLD_EPOCH=$(guardian_json "$ROTATOR" | jq -r '(.guardian.current_key_epoch // .g
 BK_PASS="$SCENARIO_DIR/s8-backup-pass"
 echo "s8-rotation-backup-passphrase" > "$BK_PASS"
 info "S8 rotating $RDIR ($ROTATOR) — epoch $OLD_EPOCH → $((OLD_EPOCH + 1))"
-guardiand rotate-key --config-path "$RCONF" \
+guardianctl rotate-key --config-path "$RCONF" \
     --backup-output "$SCENARIO_DIR/s8-rotation.tfb" \
     --backup-passphrase-file "$BK_PASS" --yes >/dev/null 2>&1 \
-    || fatal "S8 guardiand rotate-key failed"
+    || fatal "S8 guardianctl rotate-key failed"
 
 [ -s "$SCENARIO_DIR/s8-rotation.tfb" ] || fatal "S8 rotation backup bundle missing/empty"
 ok "S8 backup ceremony produced a bundle before submission"
