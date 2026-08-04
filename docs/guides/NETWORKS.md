@@ -59,8 +59,7 @@ fallback — the copy shipped with the build, or the last one read.
       "endpoints": {
         "rpc": ["http://localhost:26657"],
         "rest": ["http://localhost:1317"],
-        "grpc": ["localhost:9090"],
-        "tls": false
+        "grpc": ["localhost:9090"]
       }
     }
   ]
@@ -83,7 +82,7 @@ fallback — the copy shipped with the build, or the last one read.
 | `label` | Human-readable name for a settings screen. |
 | `chainId` | The id the node reports, and the one a client must assert before signing. Never absent: a network that cannot be identified cannot be signed for safely. |
 | `local` | Whether the network is loopback-scoped — see below. |
-| `endpoints` | `rpc`, `rest` and `grpc`, each a list, plus `tls`. |
+| `endpoints` | `rpc`, `rest` and `grpc`, each a list. |
 
 ## Why three endpoints
 
@@ -103,12 +102,12 @@ Their forms differ because their client libraries differ: `rpc` and `rest` are
 URLs, `grpc` is `host:port`, which is what cosmos gRPC clients accept. Each
 value is written in the form its own consumer passes straight through.
 
-**`tls` is what a gRPC address cannot say.** An `rpc` or `rest` URL states its
-own transport in its scheme; `host:port` has nowhere to put it, and a gRPC
-client must decide between transport credentials and an insecure dial before it
-connects. So the flag carries it: `"tls": false` dials insecure, `true` dials
-with TLS. It tracks `local` — cleartext on the machine running the node, TLS
-everywhere else — and `make verify-networks` fails if the two disagree.
+**A gRPC dial takes its transport from `local`.** An `rpc` or `rest` URL states
+its own in its scheme; `host:port` has nowhere to put one, and a gRPC client
+must choose between transport credentials and an insecure dial before it
+connects. `local` is what decides: loopback dials insecure, anything else dials
+with TLS. That is the same rule the URLs express through their scheme, so the
+entry states it once rather than twice.
 
 **An empty list is a statement.** Plenty of deployments expose 1317 and not
 9090. `"grpc": []` records that directly, so a daemon that needs gRPC learns at
@@ -147,8 +146,7 @@ and no host substitution:
   "endpoints": {
     "rpc": ["https://rpc.testnet.example.org"],
     "rest": ["https://api.testnet.example.org"],
-    "grpc": ["grpc.testnet.example.org:443"],
-    "tls": true
+    "grpc": ["grpc.testnet.example.org:443"]
   }
 }
 ```
@@ -170,7 +168,6 @@ default.
 - every `chainId` is a well-formed chain id;
 - `local` entries use a loopback host, and non-local entries use `https` for
   `rpc` and `rest`;
-- `tls` is present on every entry and is the opposite of `local`;
 - `addressPrefix` matches `AccountAddressPrefix` in `app/app.go`;
 - the devnet `chainId` matches the default `CHAIN_ID` in
   `devnet/lib/common-utils.sh`.

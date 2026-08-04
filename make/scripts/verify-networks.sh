@@ -35,16 +35,8 @@ problems=$(jq -r '
                  and (.local | type == "boolean")
                  and (.endpoints.rpc | type == "array")
                  and (.endpoints.rest | type == "array")
-                 and (.endpoints.grpc | type == "array")
-                 and (.endpoints.tls | type == "boolean")) | not)
+                 and (.endpoints.grpc | type == "array")) | not)
        | "network \(.id // "<no id>") is missing a field"),
-
-      # tls tracks local, because it is the same rule the rpc and rest URLs
-      # state through their scheme: cleartext on this machine, TLS off it. A
-      # gRPC address carries no scheme to say so, which is why the flag exists.
-      (.networks[]
-       | select(.local == (.endpoints.tls))
-       | "\(.id): local is \(.local) but endpoints.tls is \(.endpoints.tls)"),
 
       (.networks[]
        | select(.chainId | test("^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$"; "i") | not)

@@ -10,8 +10,7 @@
       "endpoints": {
         "rpc": ["http://localhost:26657"],
         "rest": ["http://localhost:1317"],
-        "grpc": ["localhost:9090"],
-        "tls": false
+        "grpc": ["localhost:9090"]
       }
     }
   ]
