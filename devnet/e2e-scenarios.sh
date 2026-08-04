@@ -146,7 +146,92 @@ wait_state() { # secret_id state timeout_s
         [ "$got" = "$want" ] && return 0
         sleep 3; waited=$((waited+3))
     done
+    secret_diagnosis "$id"
     fatal "secret $id never reached state '$want' (last seen: '$got')"
+}
+
+# Why a secret did not get where it was going.
+#
+# "never reached state 'pending' (last seen: 'failed')" names the symptom of
+# roughly every acceptance problem in this suite and distinguishes none of them:
+# too few guardians selected, enough selected but too few accepting, a daemon
+# that died hours ago, a commit window that closed while the fleet was busy. The
+# state alone sent one such failure to the wrong diagnosis for two rounds.
+#
+# The chain already records what is needed — selected_guardians, accepted_count
+# and the bounds it was judged against — so print that, and cross it with which
+# of those daemons is actually alive. A guardian is selectable while dead: health
+# is off-chain, so the chain will happily assign work to a process that no longer
+# exists, and that asymmetry is the thing to make visible.
+secret_diagnosis() { # secret_id
+    local j
+    j=$(timeflared query secrets show "$1" -o json 2>/dev/null) || return 0
+    [ -n "$j" ] || return 0
+    {
+        echo ""
+        echo "  ── why: secret $1 ──"
+        echo "$j" | jq -r '.secret |
+            "     state           : \(.state)
+     accepted        : \(.accepted_count) (needs \(.min_shares)–\(.max_shares))
+     revealed        : \(.revealed_count)
+     commit deadline : \(.commit_deadline)
+     selected        : \(.selected_guardians | length) guardians"'
+        echo "     current height  : $(height)"
+        echo "     selected guardians, and whether their daemon is alive:"
+        # The address→daemon map is fetched once. guardian_dir_for shells out to
+        # `guardians.sh status`, which queries every registered guardian; calling
+        # it per selected address turns a diagnostic into a minute of waiting.
+        local map addr dir alive
+        map=$(guardian_registry_map)
+        for addr in $(echo "$j" | jq -r '.secret.selected_guardians[]?'); do
+            dir=$(awk -v a="$addr" '$2 == a {print $1}' <<<"$map")
+            if [ -z "$dir" ]; then
+                alive="not mapped to any local daemon"
+            elif guardian_healthy "$dir"; then
+                alive="healthy"
+            elif guardian_process_alive "$dir"; then
+                alive="⚠️  process up but NOT healthy"
+            else
+                alive="❌ DEAD — selectable on chain, no process"
+            fi
+            echo "       ${dir:-?} ${addr} — ${alive}"
+        done
+        fleet_report
+    } >&2
+}
+
+# Is the daemon's process there at all, health aside?
+guardian_process_alive() { # guardian-NN
+    if [ "$GUARDIAN_CONTROL" = "docker" ]; then
+        [ "$(docker inspect -f '{{.State.Running}}' "timeflare-$1" 2>/dev/null)" = "true" ]
+    else
+        local pf="$DEVNET_DIR/guardians/$1/guardian.pid"
+        [ -f "$pf" ] && kill -0 "$(cat "$pf")" 2>/dev/null
+    fi
+}
+
+# The fleet as a whole: registered versus actually running.
+#
+# A run of this suite once ended with the teardown reporting "Stopped 23
+# guardians" after starting 24, and nothing between those two lines noticed. One
+# daemon had gone, it stayed selectable, and the failure it eventually caused
+# surfaced as a protocol-shaped assertion twenty minutes later.
+fleet_report() {
+    [ "$GUARDIAN_CONTROL" = "native" ] || return 0
+    local total=0 up=0 dead="" d name
+    for d in "$DEVNET_DIR"/guardians/*/; do
+        [ -d "$d" ] || continue
+        name=$(basename "$d")
+        total=$((total + 1))
+        if guardian_process_alive "$name"; then
+            up=$((up + 1))
+        else
+            dead="$dead $name"
+        fi
+    done
+    echo "     fleet: $up/$total daemons running"
+    [ -n "$dead" ] && echo "     not running:$dead"
+    return 0
 }
 
 secret_json() { timeflared query secrets show "$1" -o json; }
@@ -225,6 +310,17 @@ user_tx_expect_fail() { # expected_log_substring subcommand args... — asserts 
     fatal "tx $hash was never delivered"
 }
 
+# The whole address→daemon mapping in one shot, as "guardian-NN <address>" lines.
+# guardian_dir_for resolves one address and pays the full registry lookup to do
+# it; anything resolving several should take this once instead.
+guardian_registry_map() {
+    if [ "$GUARDIAN_CONTROL" = "docker" ]; then
+        awk -F: '{print $1, $2}' "$DOCKER_REGISTRY_FILE" 2>/dev/null
+    else
+        ./devnet/guardians.sh status 2>/dev/null | awk 'NF >= 2 {print $1, $2}'
+    fi
+}
+
 guardian_dir_for() { # address → guardian-NN
     if [ "$GUARDIAN_CONTROL" = "docker" ]; then
         awk -F: -v a="$1" '$2 == a {print $1}' "$DOCKER_REGISTRY_FILE" 2>/dev/null
@@ -263,6 +359,34 @@ guardians_restart() { # guardian-NN (docker restarts just the victim; native res
         fi
     fi
     guardian_wait_healthy "$1"
+    assert_fleet_intact
+}
+
+# After a restart, every registered daemon should be running — that is what
+# `guardians.sh start` with no count means. Checked here because this is the one
+# point in the run where "all of them" is unambiguously the expectation: S1
+# deliberately runs one guardian short between its kill and this restart, so a
+# blanket check elsewhere would fire on correct behaviour.
+#
+# It is fatal. A fleet quietly one daemon short stays selectable and fails a
+# later, unrelated-looking scenario instead.
+assert_fleet_intact() {
+    [ "$GUARDIAN_CONTROL" = "native" ] || return 0
+    local total=0 dead="" d name
+    for d in "$DEVNET_DIR"/guardians/*/; do
+        [ -d "$d" ] || continue
+        name=$(basename "$d")
+        total=$((total + 1))
+        guardian_process_alive "$name" || dead="$dead $name"
+    done
+    if [ -n "$dead" ]; then
+        info "fleet is short after restart ($total registered):$dead"
+        for name in $dead; do
+            info "  last lines of $name:"
+            tail -5 "$DEVNET_DIR/guardians/$name/guardian.log" 2>/dev/null | sed 's/^/    /' >&2
+        done
+        fatal "restart left the fleet short:$dead"
+    fi
 }
 
 # Block until the restarted guardian reports healthy. Starting a daemon is not
