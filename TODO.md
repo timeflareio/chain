@@ -52,18 +52,32 @@ Options: require green `main` in the runbook; add E2E to the release gate and
 accept ~20 minutes on every release; or state plainly that a release asserts
 `verify && test` and nothing more.
 
-## The SDK's release notes justify determinism with a mechanism npm does not have
+## What the vendored SDK tarball's integrity is actually worth
 
 In `timeflareio/typescript-sdk`, `release.yml`'s header comment explains that the
 dist-only tarball must be byte-deterministic because *"the mobile client vendors
 it and commits a lockfile whose integrity hash covers it"*.
 
-npm does not maintain or verify `integrity` for `file:` dependencies. A stale
-entry does not fail `npm ci`, and npm declines to regenerate it. So the stated
-reason for a real requirement is wrong.
+That is overstated, and the correction I first recorded here — that npm maintains
+no `integrity` for `file:` dependencies — was simply wrong. Measured on npm 11.4.1:
 
-The requirement itself may still be worth keeping — a vendored artefact that
-changes byte-for-byte between identical builds is unpleasant regardless — but the
-comment should say what actually depends on it, or admit that nothing verified
-does. Recorded here rather than in that repository so the deferred items are in
-one place; the fix belongs there.
+- npm **can** record it. One appeared in the mobile client's `package-lock.json`
+  during the `v0.0.1` → `v0.0.2` re-vendor, and its sha512 matched the tarball
+  byte-for-byte.
+- npm **does not** do so dependably. Neither `npm install --package-lock-only`
+  (which the sync script runs), nor a full `npm install`, nor deleting
+  `node_modules/timeflare-sdk` and reinstalling reproduces it. The committed
+  lockfile carries no integrity for that entry at all, and its `version` field is
+  the tarball's internal `0.1.0`, which does not track the release tag.
+
+So determinism cannot be justified *or* dismissed by the lockfile. The open question
+is whether the requirement is worth keeping on other grounds — a vendored artefact
+that changes byte-for-byte between identical builds is unpleasant regardless, and
+`wasm-opt` output being irreproducible is why WASM is excluded from that tarball —
+and if it is kept, the comment should say so without citing a guard that does not
+reliably exist.
+
+What does guarantee the pairing is `make sdk-verify` in the mobile client: it
+re-downloads the pinned release and byte-compares. Recorded here rather than in
+that repository so the deferred items stay in one place; the comment fix belongs
+there.
