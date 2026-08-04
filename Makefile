@@ -9,8 +9,9 @@
 # Cryptographic primitives come from github.com/timeflareio/crypto at a pinned
 # tag, imported as .../crypto/go. Nothing in this repository builds them.
 #
-# Devnet, container and upgrade targets arrive with phase 2b of the multi-repo
-# migration; this Makefile covers modules, build, quality and tests.
+# The guardian daemon and the TypeScript SDK are separate repositories; the
+# devnet and e2e targets consume their released artefacts at the versions pinned
+# in devnet/versions.env rather than building them here.
 
 # Load common foundation
 include make/common.mk
@@ -26,6 +27,8 @@ include make/go-build.mk
 include make/toolchain.mk
 include make/cleanup.mk
 include make/devnet.mk
+include make/docker.mk
+include make/upgrades.mk
 include make/deps.mk
 
 # Project configuration
