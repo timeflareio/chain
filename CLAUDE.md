@@ -3,6 +3,13 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with
 code in this repository.
 
+**It is not the whole picture.** The project-wide rules — the working agreement,
+the writing conventions (British English, VEIL is a token, never name the owner),
+the plan-first mandate, specification authority, and how a change crosses a
+repository boundary — are stated once in the workspace root `CLAUDE.md`, at
+`~/dev/timeflareio/CLAUDE.md`, which loads alongside this file. Read it if you
+are in a checkout that cannot see it.
+
 ## Project Overview
 
 **timeflare chain** is a Cosmos SDK-based blockchain implementing a time-locked
@@ -125,31 +132,14 @@ documentation and must stay synchronised with implementation.
 
 ## 📋 Specification Authority
 
-**CRITICAL**: `docs/spec.md` is the single source of truth for protocol
-behaviour, implementation decisions, and test expectations — for **every**
-timeflare repository. Other repositories link to it at a pinned tag and never
-copy it.
+**`docs/spec.md` is owned here**, and it is the protocol authority for every
+timeflare repository — they link it at a pinned tag and never copy it. That
+places the duty on this repository: a spec change lands with the code it
+describes, in the same PR, because a spec that trails the code misleads every
+consumer at once.
 
-When working on any task:
-
-1. **Reference spec.md first** when uncertain about protocol behaviour and state
-   transitions, message validation rules, economic parameters and slashing
-   penalties, guardian eligibility and selection criteria, or secret lifecycle
-   and timing.
-2. **If spec.md is unclear or missing detail**: STOP. Ask the owner to clarify
-   and update the specification. Do not guess or assume.
-3. **When facing design decisions or compatibility conflicts**: ask before
-   proceeding. Never assume backward compatibility versus correctness. Favour
-   correctness when guidance is given, and document the rationale in code
-   comments.
-4. **Implementation must match spec exactly.** Any deviation requires explicit
-   approval and a spec update.
-5. **When finding spec inconsistencies**: identify the discrepancy, propose
-   whether spec or implementation should change, and request a decision before
-   changing either.
-
-Code can be changed easily; protocol specifications define the behaviour that
-users and integrators depend on.
+The rules for consulting and disputing it are project-wide — see "Specification
+authority" in the workspace root `CLAUDE.md`.
 
 ## 🚨 Wire-field renames and removals
 
@@ -167,50 +157,11 @@ across every consuming repository, and confirm which components are clear — no
 just which ones you changed. A rename is not done when this repository is green;
 it is done when the release train has landed everywhere.
 
-## 🚨 Plan-First Workflow (mandatory — everything)
+## Specific to this repository
 
-All work is executed from an approved plan in `docs/planning/`. Code, proto,
-spec, documentation restructures, dependency changes, migrations: every change
-traces to a plan the owner has approved. **Discussion is not approval** —
-answering a question, validating an idea, or receiving a favourable reply is
-never licence to edit. Propose, wait for the ruling, fold it into a plan, then
-execute. The only exception is a change the owner explicitly requests in the
-moment, and even then the scope is exactly what was asked.
-
-The rules for authoring and refining plans are in `docs/planning/README.md`.
-
-## Important Instructions for Claude
-
-- Do what has been asked; nothing more, nothing less
-- NEVER create files unless explicitly asked to implement or code a solution
-- When asked to "elaborate", "explain", or give "feedback", give verbal
-  explanations only
-- ALWAYS prefer editing existing files over creating new ones
-- **🚨 CRITICAL: When asked to create a "plan", ONLY create the plan document —
-  DO NOT start implementing**
-- **Always wait for explicit approval** before proceeding from planning to
-  implementation
-- **🚨 CRITICAL: Keep the architecture minimal.** Never introduce a new
-  component (module, package, service, binary, build target, or second
-  implementation) without arguing the case and getting explicit confirmation
-  first. Default to extending what exists. Where duplication is genuinely
-  unavoidable it must be pinned by shared test data so it cannot drift.
-- NEVER change core proto files or models without explicit confirmation
-- Favour Go for server-side programming; only introduce other languages if
-  necessary
-- NEVER create code in production code spaces purely for the purpose of tests
-- **Documentation Language**: ALL documentation must use British English
-- **Spelling Standard**: use `-ise` endings (organise, realise), `-our` endings
-  (behaviour), `-sation` endings (organisation)
-- **🚨 VEIL is a token, never money.** Do not use "money", "cash", "funds",
-  "payment" or any currency framing for VEIL — in code, comments,
-  documentation, plans, commit messages, UI copy or conversation. Say "token",
-  "VEIL", "uveil", "balance", "amount", "fee", "cost", "bond", "reward" or
-  "rebate". This is not a style preference: describing a token as money makes a
-  regulatory claim the project does not make.
-- **🚨 NEVER name the owner.** No personal name appears anywhere in the
-  repository — not in code, comments, documentation, plans, commit messages, UI
-  copy or test fixtures. Decisions are attributed to **"the owner"**
-  (`(owner, July 2026)`, "ruled by the owner"), never to a person. This covers
-  every form: given name, surname, handle, email address, and machine paths that
-  embed a username.
+- **NEVER change core proto files or models without explicit confirmation.**
+  `proto/` and the `x/secrets/types` wire contract are the surface every other
+  component pins; see `PROTOCOL_CHANGE.md` before touching either.
+- Plans live in `docs/planning/`, per its `README.md`. The devnet is
+  machine-global, so check for a running `timeflared` before driving it — the
+  hazard is described in that README.
