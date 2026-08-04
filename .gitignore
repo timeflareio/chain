@@ -29,4 +29,3 @@ third_party/
 # sessions (including a monorepo checkout) coordinate through this file before
 # dev-up, dev-reset, e2e or anything else that drives the chain. It is
 # coordination between sessions, not history: it must never reach a branch.
-chain.lock
