@@ -41,12 +41,17 @@ ifeq ($(DOCKER_PREBUILT),1)
 #
 GUARDIAN_IMAGE ?= ghcr.io/timeflareio/guardiand:$(GUARDIAN_VERSION)
 
-# Fetch the linux/amd64 guardiand release binary to $(OUT). Used by the prebuilt
-# image path, which needs a linux binary regardless of the host.
+# Fetch the linux guardiand release binary to $(OUT). Used by the prebuilt image
+# path, which needs a linux binary regardless of the host.
+#
+# The architecture follows `go env GOARCH`, matching the timeflared build beside
+# it (`GOOS=linux go build` with no GOARCH takes the host's). Hardcoding amd64
+# was invisible on an amd64 CI runner and put an amd64 guardiand next to an arm64
+# timeflared in the same stack on any Apple Silicon machine.
 guardiand-fetch-linux:
 	@set -e; \
 	if [ -z "$(GUARDIAN_VERSION)" ]; then echo "❌ GUARDIAN_VERSION unset"; exit 1; fi; \
-	asset="guardiand-$(GUARDIAN_VERSION)-linux-amd64"; \
+	asset="guardiand-$(GUARDIAN_VERSION)-linux-$$(go env GOARCH)"; \
 	echo "👮 Fetching $$asset from timeflareio/guardian@$(GUARDIAN_VERSION)"; \
 	tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
 	gh release download "$(GUARDIAN_VERSION)" --repo timeflareio/guardian \
@@ -54,7 +59,7 @@ guardiand-fetch-linux:
 	( cd "$$tmp" && grep " $$asset$$" *checksums.txt | shasum -a 256 -c - ); \
 	install -m 0755 "$$tmp/$$asset" "$(OUT)"
 
-## build the timeflared, guardiand, and devnet tools images (from host-compiled binaries)
+## build the images with DOCKER_PREBUILT=1: binaries compiled/fetched on the host, then copied in
 docker-build:
 	@echo "🐳 Compiling timeflared + guardiand on the host (DOCKER_PREBUILT=1)..."
 	@mkdir -p $(DOCKER_PREBUILT_DIR)
@@ -82,7 +87,7 @@ docker-build:
 	@docker build --target tools -t timeflare/tools:$(DOCKER_IMAGE_TAG) -f $(DOCKER_PREBUILT_DOCKERFILE) $(DOCKER_BUILD_EXTRA_ARGS) $(DOCKER_PREBUILT_DIR)
 	@docker images --format 'table {{.Repository}}:{{.Tag}}\t{{.Size}}' | grep '^timeflare/'
 else
-## build the timeflared, guardiand, and devnet tools images
+## build the timeflared, guardiand, and devnet tools images (timeflared built in Docker, guardiand pulled)
 docker-build:
 	@echo "🐳 Building timeflare/timeflared:$(DOCKER_IMAGE_TAG)..."
 	@docker build -t timeflare/timeflared:$(DOCKER_IMAGE_TAG) $(DOCKER_BUILD_ARGS) .
@@ -138,18 +143,24 @@ docker-status:
 # Host-side e2e against the compose stack: same suites as the native devnet,
 # pointed at the stack's published ports and the exported genesis keyring.
 # TIMEFLARE_HOME isolates george + genesis keyring from any native devnet.
+#
+# SDK_DIR is passed explicitly. The suites are driven by the SDK's examples,
+# which come from the pinned release now rather than a sibling directory, and the
+# scenario script defaults to .devnet/sdk only when nothing tells it otherwise —
+# a default is not the same as the value this stack actually synced.
 DOCKER_E2E_ENV := TIMEFLARE_HOME=$(CURDIR)/$(DOCKER_HOME) \
 	RECIPIENT_KEYPAIR=$(CURDIR)/$(DOCKER_DEVNET_DIR)/recipient-keypair.json \
+	SDK_DIR=$(SDK_DIR) \
 	GUARDIAN_CONTROL=docker
 
 ## run the full lifecycle e2e (host-side) against the compose devnet
-docker-e2e: client-build-sdk
+docker-e2e: sdk-sync
 	@if ! curl -s --max-time 2 $(DOCKER_RPC)/status >/dev/null 2>&1; then \
 		echo "❌ Compose devnet not reachable — start it with 'make docker-up'"; exit 1; fi
 	@$(DOCKER_E2E_ENV) $(USER_SETUP) fund
 	@if [ ! -f $(DOCKER_DEVNET_DIR)/recipient-keypair.json ]; then \
 		echo "🔑 Generating recipient keypair..."; \
-		node typescript-sdk/examples/generate-keypair.js $(DOCKER_DEVNET_DIR)/recipient-keypair.json; fi
+		node $(E2E_KEYGEN) $(DOCKER_DEVNET_DIR)/recipient-keypair.json; fi
 	@echo "🧪 Running secret lifecycle e2e against the compose stack..."
 	@$(DOCKER_E2E_ENV) node $(E2E_TEST)
 
@@ -176,13 +187,13 @@ e2e-full: go-install
 	exit $$status
 
 ## run the failure-path scenario suite (host-side) against the compose devnet
-docker-e2e-scenarios: client-build-sdk
+docker-e2e-scenarios: sdk-sync
 	@if ! curl -s --max-time 2 $(DOCKER_RPC)/status >/dev/null 2>&1; then \
 		echo "❌ Compose devnet not reachable — start it with 'make docker-up'"; exit 1; fi
 	@$(DOCKER_E2E_ENV) $(USER_SETUP) fund
 	@if [ ! -f $(DOCKER_DEVNET_DIR)/recipient-keypair.json ]; then \
 		echo "🔑 Generating recipient keypair..."; \
-		node typescript-sdk/examples/generate-keypair.js $(DOCKER_DEVNET_DIR)/recipient-keypair.json; fi
+		node $(E2E_KEYGEN) $(DOCKER_DEVNET_DIR)/recipient-keypair.json; fi
 	@echo "🧪 Running failure-path scenario suite against the compose stack..."
 	@$(DOCKER_E2E_ENV) ./devnet/e2e-scenarios.sh
 

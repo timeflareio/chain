@@ -88,11 +88,11 @@ sdk-sync:
 	if [ -z "$(SDK_VERSION)" ]; then \
 		echo "❌ No SDK available for the e2e harness."; \
 		echo ""; \
-		echo "   SDK_VERSION is unset in devnet/versions.env because the TypeScript"; \
-		echo "   SDK has not been lifted into its own repository yet (migration"; \
-		echo "   phase 4), so there is no release to pin."; \
+		echo "   SDK_VERSION is unset in devnet/versions.env, so there is no release"; \
+		echo "   to fetch the examples bundle from."; \
 		echo ""; \
-		echo "   Point at a working tree meanwhile:"; \
+		echo "   Set it to a timeflareio/typescript-sdk tag, or point at a working"; \
+		echo "   tree for cross-repo work:"; \
 		echo "     make e2e SDK_DIR=/path/to/typescript-sdk"; \
 		exit 1; \
 	fi; \

@@ -14,28 +14,36 @@
 ##@ Dependencies
 
 ## verify every dependency root (build + test + audit + drift checks)
+#
+# "Every dependency root" means every root IN THIS REPOSITORY. The guardian, the
+# SDK and crypto are separate repositories with their own gates, and each runs
+# this same verification against its own roots — the chain cannot speak for them
+# and should not pretend to. Cross-repo agreement is what the pinned versions,
+# `verify-pins` and the vector corpora establish, not this target.
 deps-verify:
 	@echo "🔍 Verifying all dependency roots"
 	@echo "── Chain (go build + test) ──────────────────────────────"
 	@go build ./...
 	@$(MAKE) test
-	@echo "── Guardian (go build + test) ───────────────────────────"
 	@echo "── Leaf modules (go build; tests run via make test) ─────"
 	@for m in $(GO_SUBMODULE_DIRS); do \
 		(cd $$m && go build ./...) || exit 1; \
 	done
-	@$(MAKE) client-test-ts
 	@echo "── Proto deps (buf build + lint) ────────────────────────"
 	@buf build && buf lint
 	@echo "── Vulnerability scan (govulncheck, all Go modules) ─────"
 	@command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest
 	@$(MAKE) govulncheck-gated GOVULN_DIR=.
-	@$(MAKE) govulncheck-gated GOVULN_DIR=crypto
 	@$(MAKE) govulncheck-gated GOVULN_DIR=x/secrets/types
-	@echo "── Workspace drift check ────────────────────────────────"
-	@go work sync
-	@git diff --exit-code go.work go.work.sum || \
-		(echo "❌ go.work/go.work.sum drifted — commit the refreshed workspace sums"; exit 1)
+	@echo "── Module metadata drift check ──────────────────────────"
+	@# There is no committed go.work to sync any more (the umbrella workspace is
+	@# uncommitted and per-developer), so the drift this checks for is per-module:
+	@# go.mod/go.sum must already be tidy, or the committed dependency metadata
+	@# does not describe what the code imports.
+	@go mod tidy
+	@for m in $(GO_SUBMODULE_DIRS); do (cd $$m && go mod tidy) || exit 1; done
+	@git diff --exit-code go.mod go.sum $(foreach m,$(GO_SUBMODULE_DIRS),$(m)/go.mod $(m)/go.sum) || \
+		(echo "❌ module metadata drifted — commit the tidied go.mod/go.sum"; exit 1)
 	@echo "✅ All dependency roots verified"
 
 ## routine (T1) update: patch-level Go updates, then full verification
@@ -46,9 +54,8 @@ deps-update-routine:
 		echo "📦 Updating $$m to latest patch versions..."; \
 		(cd $$m && go get -u=patch ./... && go mod tidy) || exit 1; \
 	done
-	@echo "📦 Updating Rust dependencies (within semver ranges)..."
-	@echo "📦 Updating TypeScript SDK dependencies (within semver ranges)..."
-	@go work sync
+	@# Rust and npm dependencies belong to the repositories that own that code
+	@# (crypto and typescript-sdk); each runs its own routine update.
 	@$(MAKE) deps-verify
 
 # The mechanical steps are automated; the judgement steps of the T2 runbook
@@ -63,6 +70,10 @@ deps-update-consensus:
 	@echo "      of every cosmossdk.io/* submodule that moves with it (store/genesis-"
 	@echo "      format changes especially)."
 	@echo "   2. Re-justify or drop every carried pin — review follows below."
+	@echo "   3. Mirror the resulting pin block in timeflareio/guardian. It carries a"
+	@echo "      copy because Go honours replace directives only in the main module"
+	@echo "      being built; its 'make verify-pins' fails until it moves, and until"
+	@echo "      then the two daemons build against different SDK versions."
 	@echo ""
 	@echo "📦 Bumping cosmos-sdk to $(VERSION) in all pinned Go modules (require + replace pin)..."
 	@if grep -qE 'github.com/cosmos/cosmos-sdk => github.com/cosmos/cosmos-sdk' go.mod; then \
@@ -75,7 +86,6 @@ deps-update-consensus:
 		echo "   x/secrets/types: replace pin updated → $(VERSION)"; \
 	fi
 	@cd x/secrets/types && go get github.com/cosmos/cosmos-sdk@$(VERSION) && go mod tidy
-	@go work sync
 	@echo ""
 	@echo "📌 Carried pins to re-justify on this upgrade:"
 	@$(MAKE) deps-pins
