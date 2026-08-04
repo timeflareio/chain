@@ -27,7 +27,14 @@ CHAIN_RPC      ?= http://localhost:26657
 # PATH is scoped to the synced binary so the devnet cannot silently pick up a
 # guardiand installed globally by another checkout — the failure that would
 # cause is a devnet quietly testing the wrong build.
-GUARDIAN_MANAGER  := PATH="$(CURDIR)/$(DEVNET_BIN):$$PATH" ./devnet/guardians.sh
+#
+# It belongs on every script that shells out to guardiand, not just the manager:
+# the scenario suite restarts daemons and probes their health, so it calls the
+# binary too. Leaving it off there cost a CI run — the calls became "command not
+# found", which a probe reading only an exit code cannot tell apart from
+# "unhealthy".
+DEVNET_PATH       := PATH="$(CURDIR)/$(DEVNET_BIN):$$PATH"
+GUARDIAN_MANAGER  := $(DEVNET_PATH) ./devnet/guardians.sh
 CHAIN_IDENTITY    := ./devnet/verify-chain-identity.sh
 USER_SETUP        := ./devnet/users/setup-test-users.sh
 # The e2e harness is driven by the TypeScript SDK's examples. The SDK lives in
@@ -323,7 +330,7 @@ e2e-scenarios: sdk-sync
 		node $(E2E_KEYGEN) $(RECIPIENT_KEYPAIR); \
 	fi
 	@echo "🧪 Running failure-path scenario suite..."
-	@RECIPIENT_KEYPAIR=$(CURDIR)/$(RECIPIENT_KEYPAIR) SDK_DIR=$(SDK_DIR) ./devnet/e2e-scenarios.sh
+	@$(DEVNET_PATH) RECIPIENT_KEYPAIR=$(CURDIR)/$(RECIPIENT_KEYPAIR) SDK_DIR=$(SDK_DIR) ./devnet/e2e-scenarios.sh
 
 ## full E2E on the NATIVE devnet: fresh fast-block chain → lifecycle → teardown (fallback when Docker is unavailable; `make e2e-full` targets the compose stack)
 e2e-full-native:
