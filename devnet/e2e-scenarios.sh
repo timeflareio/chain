@@ -34,12 +34,13 @@
 # fleet still coming back up used to miss acceptances inside that window — the
 # secret then failed at the commit timeout with "insufficient guardian
 # acceptances" and the next scenario reported one that "never reached state
-# pending". Two things closed that race: guardians_restart now waits for the
-# victim's health probe before returning, and it restarts every registered
-# guardian rather than a hardcoded eight (a victim above that index stayed dead
-# for the rest of the run, and a dead guardian is still selectable — fatal under
-# the zero-width band these scenarios use). A failure of that shape is therefore
-# now a real signal, not something to re-run past.
+# pending". Three things closed that race: guardians_restart waits for the
+# victim's health probe before returning, it restarts every registered guardian
+# rather than a hardcoded eight (a victim above that index stayed dead for the
+# rest of the run, and a dead guardian is still selectable — fatal under the
+# zero-width band these scenarios use), and both the restart and the probe now
+# fail loudly instead of continuing. A failure of that shape is therefore a real
+# signal, not something to re-run past.
 #
 #   S8  key rotation          — a guardian rotates mid-life with a secret in
 #                               flight: the pre-rotation secret is served with
@@ -69,16 +70,20 @@ SDK_DIR="${SDK_DIR:-.devnet/sdk}"
 
 # How long to wait for a restarted guardian to report healthy.
 #
-# S1 kills a daemon and restarts it; S2 then creates a secret expecting the full
-# pool. If the restart has not finished, selection can still pick that guardian —
-# it is registered and eligible on chain — and the secret fails when it never
-# accepts. The scenario continues past this timeout deliberately so it can judge
-# the outcome rather than abort, which means too short a bound does not fail
-# here: it fails later, in a different scenario, looking like a protocol defect.
+# S1 kills a daemon and restarts it; the next scenario creates a secret expecting
+# the full pool. If the restart has not finished, selection can still pick that
+# guardian — it is registered and eligible on chain, health being an off-chain
+# notion — and the secret fails when it never accepts.
 #
-# 60s was fine on a developer machine and too short on a CI runner, where exactly
-# that happened. Generous by default; the loop exits as soon as the daemon
-# answers, so a longer bound costs a healthy run nothing.
+# Exceeding this bound is fatal. It used to log and continue, on the reasoning
+# that the scenario could judge the outcome for itself; what that actually
+# produced was a failure five minutes later in a different scenario, reported as
+# a secret that never left 'pending'. The restart not taking is the defect, and
+# it should be named where it happens.
+#
+# Generous by default because the bound is fatal: the loop exits the moment the
+# daemon answers, so a long bound costs a healthy run nothing, while a short one
+# risks failing a run that was merely slow.
 GUARDIAN_HEALTH_TIMEOUT="${GUARDIAN_HEALTH_TIMEOUT:-180}"
 
 RPC="${CHAIN_RPC:-http://localhost:26657}"
@@ -237,35 +242,62 @@ guardian_kill() { # guardian-NN
 }
 
 guardians_restart() { # guardian-NN (docker restarts just the victim; native restarts the fleet)
+    local out
+    # Output is captured rather than discarded, and a failure is fatal here.
+    # Swallowing it left the victim dead and moved the diagnosis two scenarios
+    # downstream, where it read as a protocol defect: a dead guardian is still
+    # selectable, so the next secret picked it and never reached quorum.
     if [ "$GUARDIAN_CONTROL" = "docker" ]; then
-        docker start "timeflare-$1" >/dev/null 2>&1 || true
+        if ! out="$(docker start "timeflare-$1" 2>&1)"; then
+            echo "$out" >&2
+            fatal "restarting container timeflare-$1 failed"
+        fi
     else
         # No count: start ALL registered guardians. A hardcoded count silently
         # leaves the victim dead whenever its index exceeds it, and a dead
         # guardian stays selectable — with the scenarios' zero-width band, one
         # such selection fails the whole secret.
-        ./devnet/guardians.sh start >/dev/null 2>&1 || true
+        if ! out="$(./devnet/guardians.sh start 2>&1)"; then
+            echo "$out" >&2
+            fatal "restarting the guardian fleet failed"
+        fi
     fi
     guardian_wait_healthy "$1"
 }
 
-# Block until the restarted guardian answers its health probe. Starting a
-# daemon is not the same as it being ready to accept, and the next scenario
-# creates a secret immediately: without this the fleet can still be coming up
-# through the whole commit window, and the secret fails for want of
-# acceptances. The commit window is a fixed 50 blocks and cannot be stretched
-# to hide restart latency, so the wait belongs here.
+# Block until the restarted guardian reports healthy. Starting a daemon is not
+# the same as it being ready to accept, and the next scenario creates a secret
+# immediately: without this the fleet can still be coming up through the whole
+# commit window, and the secret fails for want of acceptances. The commit window
+# is a fixed 50 blocks and cannot be stretched to hide restart latency, so the
+# wait belongs here.
 guardian_wait_healthy() { # guardian-NN
-    local cfg="$TIMEFLARE_HOME/guardian/$1/config.yaml" waited=0
-    [ -f "$cfg" ] || return 0
+    local waited=0
     while [ "$waited" -lt "$GUARDIAN_HEALTH_TIMEOUT" ]; do
-        if guardiand health --config-path "$cfg" --timeout 3 >/dev/null 2>&1; then
+        if guardian_healthy "$1"; then
             return 0
         fi
         sleep 1
         waited=$((waited + 1))
     done
-    info "$1 did not report healthy within ${GUARDIAN_HEALTH_TIMEOUT}s — continuing, the scenario will judge it"
+    fatal "$1 never reported healthy within ${GUARDIAN_HEALTH_TIMEOUT}s of restart"
+}
+
+# One probe per control mode, because the daemon is reached differently:
+#
+#   native — the CLI's own health command against the config on disk
+#   docker — the container healthcheck compose already defines, read back with
+#            docker inspect. Guardian configs live in named volumes there, so
+#            there is no host-side path to point the CLI at; the previous
+#            config-file probe silently found nothing and waited on a daemon it
+#            was never checking.
+guardian_healthy() { # guardian-NN
+    if [ "$GUARDIAN_CONTROL" = "docker" ]; then
+        [ "$(docker inspect -f '{{.State.Health.Status}}' "timeflare-$1" 2>/dev/null)" = "healthy" ]
+    else
+        guardiand health --config-path "$TIMEFLARE_HOME/guardian/$1/config.yaml" \
+            --timeout 3 >/dev/null 2>&1
+    fi
 }
 
 create_secret() { # manifest offset duration bump
@@ -278,6 +310,25 @@ mkdir -p "$SCENARIO_DIR"
 if ! curl -s --max-time 2 "$RPC/status" >/dev/null 2>&1; then
     echo "❌ Chain is not running — start the devnet first with 'make dev-up'"
     exit 1
+fi
+
+# guardiand is a precondition of this suite, not an incidental dependency: S1
+# and S8 restart daemons and probe their health through it. Since the split it
+# is a synced release artefact in .devnet/bin rather than a globally installed
+# binary, so a caller that does not put that directory on PATH gets "command not
+# found" from every one of those calls — and an exit code alone cannot tell that
+# apart from "the daemon is unhealthy". Assert it up front, and print which
+# binary answered: a stale globally installed guardiand from another checkout
+# would otherwise be indistinguishable from the pinned one in the log.
+if [ "$GUARDIAN_CONTROL" = "native" ]; then
+    if ! command -v guardiand >/dev/null 2>&1; then
+        echo "❌ guardiand is not on PATH."
+        echo "   This suite restarts guardian daemons and probes their health."
+        echo "   Run it via 'make e2e-scenarios', which puts the pinned binary"
+        echo "   (.devnet/bin/guardiand, synced by 'make guardiand-sync') on PATH."
+        exit 1
+    fi
+    info "guardiand: $(command -v guardiand) ($(guardiand version 2>/dev/null | awk '/^Version:/{print $2}'))"
 fi
 
 # community_pool_total sums the community pool in uveil (decimal — DecCoins
