@@ -124,7 +124,7 @@ format: go-format go-lint
 # (make deps-verify) and runs on the weekly security-sweep workflow rather
 # than blocking every merge.
 ## verify all code quality standards (read-only checks)
-verify: go-format-check go-lint-check go-vet verify-boundaries verify-choke-points
+verify: go-format-check go-lint-check go-vet verify-boundaries verify-choke-points verify-networks
 
 ###############################################################################
 ###                           Cleanup                                      ###

@@ -1,0 +1,17 @@
+{
+  "default": "devnet",
+  "addressPrefix": "tmflr",
+  "networks": [
+    {
+      "id": "devnet",
+      "label": "Local devnet",
+      "chainId": "timeflare-test",
+      "local": true,
+      "endpoints": {
+        "rpc": ["http://localhost:26657"],
+        "rest": ["http://localhost:1317"],
+        "grpc": ["localhost:9090"]
+      }
+    }
+  ]
+}
