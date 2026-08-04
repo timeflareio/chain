@@ -162,6 +162,13 @@ it is done when the release train has landed everywhere.
 - **NEVER change core proto files or models without explicit confirmation.**
   `proto/` and the `x/secrets/types` wire contract are the surface every other
   component pins; see `PROTOCOL_CHANGE.md` before touching either.
+- **`networks.json` is the network registry** — the single definition of the
+  networks this chain runs as (the devnet today; testnets and mainnet as they
+  exist), which consumers read to derive their defaults rather than each
+  carrying its own copy of a chain id, a port and the address prefix. It is
+  deployment fact, not protocol, so it is deliberately **not** part of
+  `docs/spec.md`; the field reference is `docs/guides/NETWORKS.md`. `make
+  verify` fails if it drifts from `app/app.go` or the devnet scripts.
 - Plans live in `docs/planning/`, per its `README.md`. The devnet is
   machine-global, so check for a running `timeflared` before driving it — the
   hazard is described in that README.

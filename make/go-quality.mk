@@ -132,9 +132,19 @@ verify-choke-points:
 	fi
 	@echo "✅ Guardian writes go through SetGuardian"
 
+# The network registry. networks.json is the single definition of the networks
+# this chain runs as, read by consumers to derive their defaults instead of each
+# carrying its own copy of a chain id, a port and an address prefix
+# (docs/guides/NETWORKS.md). It sits beside the other structural verifications
+# rather than in a data-specific file because it fails for the same reason they
+# do: a value that drifted from the place that defines it.
+verify-networks:
+	@echo "--> Checking the network registry..."
+	@./make/scripts/verify-networks.sh
+
 # Combined quality checks (read-only mode)
 # go-govulncheck runs separately (advisory) — see the verify target note.
 go-quality-check: go-format-check go-lint-check go-vet
 	@echo "🎉 All code quality checks passed!"
 
-.PHONY: go-format go-lint go-imports go-imports-check go-vet go-govulncheck go-format-check go-lint-check go-quality-check verify-boundaries verify-choke-points
+.PHONY: go-format go-lint go-imports go-imports-check go-vet go-govulncheck go-format-check go-lint-check go-quality-check verify-boundaries verify-choke-points verify-networks
