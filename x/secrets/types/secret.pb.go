@@ -505,6 +505,12 @@ type Secret struct {
 	// Guardian addresses selected in Phase 1 (max_shares entries). Written once
 	// at publication; UserDistributeShares validates share addressing against it
 	// without touching the side-stores.
+	//
+	// Exactly max_shares, never more: there is no over-selection buffer, and this
+	// list is never extended after publication. A selected guardian that goes
+	// unresponsive is therefore not substituted — the acceptance tolerance is the
+	// creator's band, max_shares − min_shares, so a zero-width band requires every
+	// entry here to accept before commit_deadline or the secret fails.
 	SelectedGuardians []string `protobuf:"bytes,21,rep,name=selected_guardians,json=selectedGuardians,proto3" json:"selected_guardians,omitempty"`
 	// Number of assignments with status ACCEPTED (denormalised; the accepted
 	// set itself lives in the AssignmentRecord store). Accumulates up to
