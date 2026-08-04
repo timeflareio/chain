@@ -33,14 +33,18 @@ DOCKER_PREBUILT_DOCKERFILE := devnet/docker/Dockerfile.prebuilt
 
 ##@ Containers
 
-ifeq ($(DOCKER_PREBUILT),1)
 # The guardian image and binary come from timeflareio/guardian at the version
 # pinned in devnet/versions.env. Override either for cross-repo development:
 #
 #   make docker-build GUARDIAN_IMAGE=timeflare/guardiand:dev
 #
+# Defined outside the DOCKER_PREBUILT branches because BOTH consume it — the
+# default path pulls this image, the prebuilt path fetches the matching binary.
+# It used to sit inside the prebuilt branch, which left the default path pulling
+# an empty image name: "docker pull requires 1 argument".
 GUARDIAN_IMAGE ?= ghcr.io/timeflareio/guardiand:$(GUARDIAN_VERSION)
 
+ifeq ($(DOCKER_PREBUILT),1)
 # Fetch the linux guardiand release binary to $(OUT). Used by the prebuilt image
 # path, which needs a linux binary regardless of the host.
 #
