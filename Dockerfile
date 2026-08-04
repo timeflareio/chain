@@ -15,7 +15,21 @@
 # Version arrives via build args rather than from git: .dockerignore excludes
 # .git to keep the context small, so the toolchain cannot derive it here.
 
-FROM golang:1.26.5 AS build
+# --platform=$BUILDPLATFORM pins the BUILDER to the machine doing the building;
+# the compiler then cross-compiles to $TARGETARCH below. Without it, a
+# multi-platform build — the release workflow builds linux/amd64 and linux/arm64 —
+# runs this whole stage inside an emulated container for every foreign target: the
+# entire cosmos-sdk graph compiled under QEMU. That cost v0.0.2 a 43-minute image
+# job while the rest of the release finished in three.
+#
+# Safe because there is no cgo. CGO_ENABLED=0 already makes this a pure-Go static
+# build, which is precisely the case Go cross-compiles natively.
+#
+# Hermeticity is unchanged: the toolchain is still the pinned golang image and the
+# source is still compiled inside the container. This is NOT the devnet's
+# Dockerfile.prebuilt path, which copies host-built binaries in and is
+# deliberately kept away from release images.
+FROM --platform=$BUILDPLATFORM golang:1.26.5 AS build
 WORKDIR /src
 
 # Module graph first so source edits don't re-download modules. The nested
@@ -28,11 +42,18 @@ COPY . .
 
 ARG VERSION=dev
 ARG COMMIT=unknown
+# Supplied by BuildKit per target platform. GOOS is not needed: every target here
+# is linux, which is what the builder image already is.
+ARG TARGETARCH
 # Mirrors make/common.mk ldflags so `timeflared version` inside the image
 # reports the stamped build
+#
+# The build cache is keyed per architecture. Sharing one cache mount across
+# targets would have amd64 and arm64 objects overwrite each other, turning the
+# cache from a saving into a liability on every alternating build.
 RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath \
+    --mount=type=cache,target=/root/.cache/go-build,id=go-build-$TARGETARCH \
+    CGO_ENABLED=0 GOARCH=$TARGETARCH go build -trimpath \
     -ldflags "-X github.com/cosmos/cosmos-sdk/version.Name=timeflare \
               -X github.com/cosmos/cosmos-sdk/version.AppName=timeflare \
               -X github.com/cosmos/cosmos-sdk/version.Version=${VERSION} \
