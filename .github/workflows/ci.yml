@@ -110,7 +110,7 @@ jobs:
   # The job exists rather than being deferred so the gap stays visible. It turns
   # green when the guardian is readable and the SDK ships.
   e2e:
-    name: E2E (devnet lifecycle) — blocked, see preconditions
+    name: E2E (devnet lifecycle)
     needs: [chain, proto, workflows]
     runs-on: ubuntu-latest
     steps:
