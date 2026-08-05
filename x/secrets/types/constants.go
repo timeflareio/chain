@@ -9,7 +9,8 @@ import (
 // at m/44'/9733'/0'/0/0 (docs/spec.md, "Network Configuration"). Declared in
 // this module — the shared wire contract — so the chain (app/config.go) and
 // the guardian derive from a single Go declaration; clients that cannot
-// import Go pin their copy against testdata/vectors/wallet_derivation.json.
+// import Go pin their copy against this module's
+// testdata/vectors/wallet_derivation.json, which travels with it.
 const ChainCoinType = 9733
 
 // Secret state constants to avoid magic strings throughout the codebase

@@ -28,7 +28,7 @@ More than any other component, and on **two tag namespaces**:
 | `timeflared` binaries | `vX.Y.Z` | validators, node operators |
 | `timeflared` container image (GHCR) | `vX.Y.Z` | the compose devnet, operators |
 | proto tarball | `vX.Y.Z` | the TypeScript SDK (`proto-sync`) |
-| chain-semantics vector tarball + manifest | `vX.Y.Z` | the SDK and the guardian |
+| chain-semantics vector tarball + manifest | `vX.Y.Z` | the SDK and the mobile client — the guardian's two files travel inside the `x/secrets/types` module it already requires |
 
 The two namespaces are forced, not chosen: Go requires a nested module's tags to
 carry its subdirectory prefix. That is the cosmos convention and it is why an

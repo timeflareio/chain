@@ -64,7 +64,10 @@ Two modules live here, with a strict one-way dependency flow:
 - **`x/secrets/types`** (`github.com/timeflareio/chain/x/secrets/types`) —
   nested leaf module following the cosmos `x/` submodule convention. This is
   **the wire contract**: generated proto types, constants, errors, message
-  types + `ValidateBasic`, economics pricing core, detection hints. It must
+  types + `ValidateBasic`, economics pricing core, detection hints, and the two
+  corpus files a Go consumer outside this repository asserts
+  (`testdata/vectors/wallet_derivation.json` and `client_conventions.json`, which
+  the guardian reads from the module rather than fetching). It must
   never import chain internals, and never import `timeflareio/crypto` — the
   wire contract stays independently consumable so an integrator pinning it
   inherits no crypto dependency. `ValidateBasic` therefore stays a purely
