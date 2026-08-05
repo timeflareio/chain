@@ -55,14 +55,27 @@ The invariant separates three things, and only the first is forbidden:
 
 **Two values, two homes.**
 
-- **6s is the real cadence**, defined once in `networks.json` per network.
-- **1s is the test cadence**, defined once, used by every test path — CI and a
-  manual run alike.
+- **6s is the real cadence**, defined once in `networks.json` per network. A devnet
+  brought up for interactive work runs at it, because that is what the deployment
+  is.
+- **1s is the test cadence**, defined once, applied only by a path that exists to
+  run tests.
 
 `TIMEFLARE_BLOCK_TIME` remains the escape for a one-off experiment, but no target
 and no workflow carries its own default. Anything that is neither the real value
-nor the test value should not exist: the three `2s` defaults today are exactly
-that, a third cadence nobody chose deliberately.
+nor the test value should not exist: the three `2s` defaults are that, a third
+cadence nobody chose. They drop to the test value unless a reason to keep them
+turns up — and the burden is on finding the reason, not on justifying the
+collapse.
+
+**A test path owns bringing the chain up at the test cadence.** The cadence is a
+property of the running chain, not of the command that drives it, so `make e2e` and
+`make e2e-scenarios` inherit whatever the devnet was started with. That is a trap:
+a 6s devnet is the default and correct for interactive work, and running the
+scenario suite against it takes about ninety minutes rather than fifteen with
+nothing to say why. Whatever sets the chain up for a test run therefore sets the
+cadence too, and the suites name the cadence they found on the chain when it is not
+the test one — long enough to notice before the wait, not after.
 
 This plan therefore does two separable things: it reduces eleven literals to those
 two definitions, and it puts a guard under the invariant so it stays true.
@@ -126,7 +139,8 @@ keeps that true rather than accidental.
 | chain devnet (native and compose) | the `networks.json` entry, read in one place | `TIMEFLARE_BLOCK_TIME` |
 | guardian | **nothing** — it records and prints block counts, and derives its poll interval from the network entry at `config init` without storing a cadence | the network entry the override already reached |
 | SDK | measured from block samples, as now; fallback from the network entry the client fetches | n/a — it observes rather than configures |
-| test paths (CI, `e2e-full-native`, the dependency gate, compose full-E2E) | the single test cadence — `1s` — defined once | `TIMEFLARE_BLOCK_TIME` for a one-off |
+| a devnet for interactive work (`dev-up`, `dev-reset`) | the `networks.json` entry — 6s, the deployment reality | `TIMEFLARE_BLOCK_TIME` for a one-off |
+| test paths (CI, `e2e-full-native`, the dependency gate, compose full-E2E) | the single test cadence — `1s` — defined once, and the path sets it when it brings the chain up | as above |
 
 `networks.json` is the right home and the surrounding machinery already exists:
 `CLAUDE.md` describes it as the single definition of the networks this chain runs
@@ -155,9 +169,14 @@ this lands alone.
 One thing to verify rather than assume while collapsing `2s` to `1s`: the compose
 full-E2E runs multiple validators (`make/docker.mk` passes `VALIDATOR_COUNT`), and
 multi-validator consensus at one second is a different proposition from the single
-validator the native devnet runs. If it will not hold, that is a reason for the
-compose path to keep its own value — and a reason to write down why, which nothing
-does today.
+validator the native devnet runs. If it holds, `2s` goes. If it does not, the compose
+path keeps a value **and** the reason is written down beside it, which is what is
+missing today.
+
+The suites also gain the cadence check described in §1 — reading the chain's actual
+cadence and saying so when it is not the test one. That is a few lines, and it is
+the difference between a ninety-minute wait understood in advance and one
+discovered at the end.
 
 **Phase 2 — the guardian stops converting.** `block_time` leaves its config
 entirely. `metrics.RecordReveal` takes blocks rather than a duration;
@@ -209,10 +228,13 @@ means the same thing as a slow one.
 5. **The override exists for tests and devnet runs.** It is honoured at start, on
    the chain and on a guardian's `config init`. Hot-reloading a running chain is
    not what this solves.
-6. **Two values, two homes** (§1). 6s is the real cadence in `networks.json`; 1s is
-   the test cadence defined once and used by every test path, automated or manual.
-   The three `2s` defaults are a third cadence nobody chose, and they become the
-   test value unless multi-validator compose consensus proves otherwise.
+6. **Two values, two homes** (§1). 6s is the real cadence in `networks.json`, and a
+   devnet for interactive work runs at it. 1s is the test cadence, defined once and
+   applied by the paths that exist to run tests. The three `2s` defaults drop to the
+   test value unless a reason to keep them turns up, and the burden is on finding
+   the reason. A test path brings the chain up at the test cadence rather than
+   assuming one, and the suites report the cadence they found when it is not the
+   test one.
 
 ## 7. What this plan does not solve
 
