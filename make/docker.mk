@@ -45,23 +45,33 @@ DOCKER_PREBUILT_DOCKERFILE := devnet/docker/Dockerfile.prebuilt
 GUARDIAN_IMAGE ?= ghcr.io/timeflareio/guardiand:$(GUARDIAN_VERSION)
 
 ifeq ($(DOCKER_PREBUILT),1)
-# Fetch the linux guardiand release binary to $(OUT). Used by the prebuilt image
-# path, which needs a linux binary regardless of the host.
+# Fetch the linux guardian release binaries into $(OUT_DIR). Used by the prebuilt
+# image path, which needs linux binaries regardless of the host.
+#
+# BOTH, since the v0.0.4 surface split: guardiand runs the service, guardianctl
+# configures and registers. The compose stack needs both — its init container is
+# what calls guardianctl — and they must come from the same tag.
 #
 # The architecture follows `go env GOARCH`, matching the timeflared build beside
 # it (`GOOS=linux go build` with no GOARCH takes the host's). Hardcoding amd64
-# was invisible on an amd64 CI runner and put an amd64 guardiand next to an arm64
-# timeflared in the same stack on any Apple Silicon machine.
-guardiand-fetch-linux:
+# was invisible on an amd64 CI runner and put an amd64 guardian binary next to an
+# arm64 timeflared in the same stack on any Apple Silicon machine.
+guardian-fetch-linux:
 	@set -e; \
 	if [ -z "$(GUARDIAN_VERSION)" ]; then echo "❌ GUARDIAN_VERSION unset"; exit 1; fi; \
-	asset="guardiand-$(GUARDIAN_VERSION)-linux-$$(go env GOARCH)"; \
-	echo "👮 Fetching $$asset from timeflareio/guardian@$(GUARDIAN_VERSION)"; \
+	if [ -z "$(OUT_DIR)" ]; then echo "❌ OUT_DIR unset"; exit 1; fi; \
+	arch="$$(go env GOARCH)"; \
 	tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+	echo "👮 Fetching guardiand + guardianctl $(GUARDIAN_VERSION)-linux-$$arch from timeflareio/guardian"; \
 	gh release download "$(GUARDIAN_VERSION)" --repo timeflareio/guardian \
-		--pattern "$$asset" --pattern "*checksums.txt" --dir "$$tmp"; \
-	( cd "$$tmp" && grep " $$asset$$" *checksums.txt | shasum -a 256 -c - ); \
-	install -m 0755 "$$tmp/$$asset" "$(OUT)"
+		--pattern "guardiand-$(GUARDIAN_VERSION)-linux-$$arch" \
+		--pattern "guardianctl-$(GUARDIAN_VERSION)-linux-$$arch" \
+		--pattern "*checksums.txt" --dir "$$tmp"; \
+	for bin in guardiand guardianctl; do \
+		asset="$$bin-$(GUARDIAN_VERSION)-linux-$$arch"; \
+		( cd "$$tmp" && grep " $$asset$$" *checksums.txt | shasum -a 256 -c - ); \
+		install -m 0755 "$$tmp/$$asset" "$(OUT_DIR)/$$bin"; \
+	done
 
 ## build the images with DOCKER_PREBUILT=1: binaries compiled/fetched on the host, then copied in
 docker-build:
@@ -77,12 +87,12 @@ docker-build:
 		          -X github.com/cosmos/cosmos-sdk/version.Version=$(VERSION) \
 		          -X github.com/cosmos/cosmos-sdk/version.Commit=$(COMMIT)" \
 		-o $(DOCKER_PREBUILT_DIR)/timeflared ./cmd/timeflared
-	@# guardiand is no longer compiled here — there is no guardian source in this
-	@# repository. The linux/amd64 release binary is fetched instead, which is
-	@# also what the compose stack should be running: the artefact an operator
-	@# would deploy, not a local rebuild of it.
-	@$(MAKE) --no-print-directory guardiand-fetch-linux \
-		OUT=$(CURDIR)/$(DOCKER_PREBUILT_DIR)/guardiand
+	@# The guardian binaries are not compiled here — there is no guardian source in
+	@# this repository. The release binaries are fetched instead, which is also what
+	@# the compose stack should run: the artefacts an operator would deploy, not a
+	@# local rebuild of them.
+	@$(MAKE) --no-print-directory guardian-fetch-linux \
+		OUT_DIR=$(CURDIR)/$(DOCKER_PREBUILT_DIR)
 	@echo "🐳 Building timeflare/timeflared:$(DOCKER_IMAGE_TAG) (prebuilt)..."
 	@docker build --target timeflared -t timeflare/timeflared:$(DOCKER_IMAGE_TAG) -f $(DOCKER_PREBUILT_DOCKERFILE) $(DOCKER_BUILD_ARGS) $(DOCKER_PREBUILT_DIR)
 	@echo "🐳 Building timeflare/guardiand:$(DOCKER_IMAGE_TAG) (prebuilt)..."
@@ -205,4 +215,4 @@ docker-e2e-scenarios: sdk-sync
 	@echo "🧪 Running failure-path scenario suite against the compose stack..."
 	@$(DOCKER_E2E_ENV) ./devnet/e2e-scenarios.sh
 
-.PHONY: guardiand-fetch-linux docker-build docker-up docker-down docker-reset docker-logs docker-status docker-e2e docker-e2e-scenarios e2e-full
+.PHONY: guardian-fetch-linux docker-build docker-up docker-down docker-reset docker-logs docker-status docker-e2e docker-e2e-scenarios e2e-full

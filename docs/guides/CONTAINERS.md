@@ -165,7 +165,7 @@ docker run --rm -it -v guardian-data:/home/nonroot/.timeflare/guardian \
   --key-name myguardian --keyring-backend file --auto-generate-key
 
 # 2. Create the signing (wallet) key in the same keyring. The image ships
-#    no timeflared and needs none: 'guardiand wallet' derives at the
+#    no timeflared and needs none: 'guardianctl wallet' derives at the
 #    chain's HD path (m/44'/9733'/0'/0/0), so the 24 words shown once here
 #    restore the same account in any Timeflare wallet. Write them down and
 #    store them off-host — they are the only recovery for the key and its
@@ -204,40 +204,25 @@ docker run --rm -it -v guardian-data:/home/nonroot/.timeflare/guardian \
 
 Every config key has a `GUARDIAN_<KEY>` env override (precedence: flags >
 env > file > defaults) — a container needs no config file at all if it
-prefers pure env. Register with `guardiand register` (run once, same volume).
-**The operator dashboard needs a credential in a container.** `guardiand` serves
-its read-only dashboard on 21200, on the same `bind_address` as health and
-metrics (`0.0.0.0` by default). The page names bond exposure, key fingerprints,
-encrypted-at-rest status — including a plaintext-key warning that tells an
-attacker which guardians are worth attacking — and the full config, so beyond
-loopback it authenticates: HTTP Basic as user `guardian`, against the bcrypt
-hash in `dashboard_password_hash`. Set it with `guardiand config
-set-dashboard-password` (`--generate` for a strong one, printed once; `--stdin`
-to provision a chosen one from a build script). `GUARDIAN_DASHBOARD_PASSWORD_HASH`
-works too — the hash is not a secret, which is why the plaintext never goes
-near a config file or an environment variable.
+prefers pure env. Register with `guardianctl register` (run once, same volume).
+**The operator dashboard is unauthenticated, by being uninteresting.** `guardiand`
+serves it read-only on 21200, on the same `bind_address` as health and metrics
+(`0.0.0.0` by default), and it needs no credential: every field it shows is
+something the chain already publishes about that guardian, or plain liveness.
 
-**Without one, the dashboard is not served at all.** The daemon logs an error
-naming the fix and carries on: health, metrics and reveals are unaffected,
-because a missed reveal window is slashable and a missing page is not. Note
-that this keys off `bind_address`, and a container binds `0.0.0.0` for `-p` to
-publish anything — so a guardian whose dashboard port is published nowhere
-still needs a credential. That is deliberate: the daemon cannot see what
-`ports:` published, and the alternative is an operator-asserted "not exposed"
-flag that gets set once and forgotten.
+That is a rule about content rather than a control on access, and it replaced the
+Basic-auth-plus-TLS arrangement the guardian carried until v0.0.4 — along with
+`dashboard_password_hash`, the TLS key/cert settings, and the branch that refused
+to bind the listener beyond loopback without a credential. `enable_dashboard` and
+`dashboard_port` are what remain.
 
-Basic auth without TLS defends against unauthorised readers, not against a
-network eavesdropper — base64 is not encryption, and the credential crosses the
-network on every poll. Set `dashboard_tls_cert_file` and `dashboard_tls_key_file`
-(both or neither) to serve the dashboard over TLS in-process, or front the port
-with a TLS proxy. The daemon warns at startup when it authenticates without
-encryption.
+The consequence for a container is that there is nothing to provision: publish the
+port or do not.
 
 Guardian containers publish no ports (health checks run in-container via exec
 form), so a compose dashboard is reachable only from the container network until
-a `ports:` mapping is added — the credential is still required. The native
-devnet fans it out over `BASE_DASHBOARD_PORT + i` (21200-21299); both devnets
-set the shared password `timeflare-devnet` on every guardian.
+a `ports:` mapping is added. The native devnet fans it out over
+`BASE_DASHBOARD_PORT + i` (21200-21299).
 
 Monitor via the metrics port; `/ready` and `/health` map directly onto
 container and Kubernetes probes. On start the daemon verifies the local

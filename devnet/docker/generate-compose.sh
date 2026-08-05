@@ -144,7 +144,7 @@ cat <<EOF
   $name:
     image: timeflare/guardiand:dev
     container_name: timeflare-$name
-    command: ["start", "--accept"]
+    command: ["start"]
     environment:
       # config.yaml on the volume carries the generated identity; these
       # re-point the init-container-absolute paths at this container's mount

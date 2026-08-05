@@ -58,7 +58,6 @@ BASE_DASHBOARD_PORT="${BASE_DASHBOARD_PORT:-21200}"
 # the dev path exercises the authentication code that ships rather than a bypass
 # — an escape hatch is a thing that can be left on in production. The cost is
 # per-origin: a first visit to all 24 dashboards means 24 browser prompts.
-DASHBOARD_PASSWORD="${DASHBOARD_PASSWORD:-timeflare-devnet}"
 
 # Runtime state (PIDs, logs, registry) — gitignored
 RUNTIME_DIR="$REPO_ROOT/.devnet/guardians"
@@ -139,7 +138,7 @@ guardian_float_of() {
     echo "${stake:-0} ${locked:-0}"
 }
 
-# Phase 1 (local, no chain interaction): keyring, key, and guardiand config.
+# Phase 1 (local, no chain interaction): keyring, key, and guardianctl config.
 # Prints the guardian's address. Idempotent.
 prepare_one() {
     local name="$1"
@@ -168,17 +167,18 @@ prepare_one() {
 
     # Guardian configuration (idempotent — config init fails if it already exists)
     if [[ ! -f "$config_file" ]]; then
-        guardiand config init --config-path "$config_file" \
+        guardianctl config init --config-path "$config_file" \
             --key-name "$name" \
             --keyring-backend file \
             --keyring-dir "$keyring_dir" \
             --keyring-passphrase "$passphrase" \
             --encryption-key-passphrase "$GUARDIAN_KEY_PASSPHRASE" \
-            --auto-generate-key >/dev/null
-        guardiand config set --config-path "$config_file" keyring-passphrase "$passphrase_file" >/dev/null
-        guardiand config set --config-path "$config_file" chain-id "$CHAIN_ID" >/dev/null
-        guardiand config set --config-path "$config_file" rpc-endpoint "$RPC_ENDPOINT" >/dev/null
-        guardiand config set --config-path "$config_file" grpc-endpoint "$GRPC_ENDPOINT" >/dev/null
+            --auto-generate-key \
+            --non-interactive >/dev/null
+        guardianctl config set --config-path "$config_file" keyring-passphrase "$passphrase_file" >/dev/null
+        guardianctl config set --config-path "$config_file" chain-id "$CHAIN_ID" >/dev/null
+        guardianctl config set --config-path "$config_file" rpc-endpoint "$RPC_ENDPOINT" >/dev/null
+        guardianctl config set --config-path "$config_file" grpc-endpoint "$GRPC_ENDPOINT" >/dev/null
     fi
 
     echo "$address"
@@ -265,7 +265,7 @@ register_batch() {
     for name in "${names[@]}"; do
         config_file="$(guardian_home "$name")/config.yaml"
         mkdir -p "$RUNTIME_DIR/$name"
-        guardiand register --config-path "$config_file" \
+        guardianctl register --config-path "$config_file" \
             --stake-amount "$GUARDIAN_STAKE" \
             --available-until "$GUARDIAN_AVAILABLE_UNTIL" \
             --accept > "$RUNTIME_DIR/$name/register.log" 2>&1 &
@@ -359,15 +359,11 @@ start_one() {
     fi
 
     mkdir -p "$RUNTIME_DIR/$name"
-    guardiand config set --config-path "$config_file" health-port "$health_port" >/dev/null
-    guardiand config set --config-path "$config_file" metrics-port "$metrics_port" >/dev/null
-    guardiand config set --config-path "$config_file" dashboard-port "$dashboard_port" >/dev/null
-    # --stdin rather than a hash constant, so the credential the docs quote is
-    # demonstrably the credential the devnet uses.
-    printf '%s' "$DASHBOARD_PASSWORD" | guardiand config set-dashboard-password \
-        --config-path "$config_file" --stdin >/dev/null
+    guardianctl config set --config-path "$config_file" health-port "$health_port" >/dev/null
+    guardianctl config set --config-path "$config_file" metrics-port "$metrics_port" >/dev/null
+    guardianctl config set --config-path "$config_file" dashboard-port "$dashboard_port" >/dev/null
 
-    guardiand start --config-path "$config_file" --accept > "$log_file" 2>&1 &
+    guardiand start --config-path "$config_file" > "$log_file" 2>&1 &
     echo $! > "$pid_file"
 
     # Confirm the process survives startup

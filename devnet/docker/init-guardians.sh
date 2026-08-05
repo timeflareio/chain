@@ -36,7 +36,6 @@ GUARDIAN_AVAILABLE_UNTIL="${GUARDIAN_AVAILABLE_UNTIL:-5256000}"
 GUARDIAN_KEY_PASSPHRASE="${GUARDIAN_KEY_PASSPHRASE:-timeflare-devnet-share-key}"
 # Well-known dashboard password — devnet only, shared by every guardian, and
 # identical to the native devnet's (devnet/guardians.sh)
-DASHBOARD_PASSWORD="${DASHBOARD_PASSWORD:-timeflare-devnet}"
 
 SHARED=/shared
 KEYRING_DIR="$SHARED/genesis-keyring"
@@ -94,30 +93,24 @@ for i in $(seq 1 "$GUARDIAN_COUNT"); do
     address=$(echo "$passphrase" | timeflared keys show "$name" -a --keyring-backend file --keyring-dir "$keyring_dir")
 
     if [[ ! -f "$config_file" ]]; then
-        HOME="$ghome" guardiand config init --config-path "$config_file" \
+        HOME="$ghome" guardianctl config init --config-path "$config_file" \
             --key-name "$name" \
             --keyring-backend file \
             --keyring-dir "$keyring_dir" \
             --keyring-passphrase "$passphrase" \
             --encryption-key-passphrase "$GUARDIAN_KEY_PASSPHRASE" \
-            --auto-generate-key >/dev/null
+            --auto-generate-key \
+            --non-interactive >/dev/null
         # Native parity (guardians.sh): passphrase path points at the root
         # copy; the guardian container re-points all paths via env overrides
-        HOME="$ghome" guardiand config set --config-path "$config_file" keyring-passphrase "$passfile" >/dev/null
-        HOME="$ghome" guardiand config set --config-path "$config_file" chain-id "$CHAIN_ID" >/dev/null
-        HOME="$ghome" guardiand config set --config-path "$config_file" rpc-endpoint "$RPC_ENDPOINT" >/dev/null
-        HOME="$ghome" guardiand config set --config-path "$config_file" grpc-endpoint "$GRPC_ENDPOINT" >/dev/null
+        HOME="$ghome" guardianctl config set --config-path "$config_file" keyring-passphrase "$passfile" >/dev/null
+        HOME="$ghome" guardianctl config set --config-path "$config_file" chain-id "$CHAIN_ID" >/dev/null
+        HOME="$ghome" guardianctl config set --config-path "$config_file" rpc-endpoint "$RPC_ENDPOINT" >/dev/null
+        HOME="$ghome" guardianctl config set --config-path "$config_file" grpc-endpoint "$GRPC_ENDPOINT" >/dev/null
         # Container-native monitoring: fixed ports, bind on all interfaces
-        HOME="$ghome" guardiand config set --config-path "$config_file" bind-address '0.0.0.0' >/dev/null
-        HOME="$ghome" guardiand config set --config-path "$config_file" health-port 21000 >/dev/null
-        HOME="$ghome" guardiand config set --config-path "$config_file" metrics-port 21100 >/dev/null
-        # The container binds 0.0.0.0 because -p publishes nothing otherwise, so
-        # the daemon treats the dashboard as exposed and serves none without a
-        # credential — whether or not compose publishes the port. Same shared
-        # devnet password as the native path (devnet/guardians.sh), set through
-        # the shipped command rather than as a hash constant.
-        printf '%s' "$DASHBOARD_PASSWORD" | HOME="$ghome" guardiand config set-dashboard-password \
-            --config-path "$config_file" --stdin >/dev/null
+        HOME="$ghome" guardianctl config set --config-path "$config_file" bind-address '0.0.0.0' >/dev/null
+        HOME="$ghome" guardianctl config set --config-path "$config_file" health-port 21000 >/dev/null
+        HOME="$ghome" guardianctl config set --config-path "$config_file" metrics-port 21100 >/dev/null
     fi
 
     # Assert the layout the guardian containers' static GUARDIAN_* path
@@ -196,7 +189,7 @@ if [[ ${#TO_REGISTER[@]} -gt 0 ]]; then
     log "registering ${#TO_REGISTER[@]} guardians in parallel..."
     for idx in "${TO_REGISTER[@]}"; do
         name="${NAMES[$idx]}"
-        HOME="/homes/$name" guardiand register \
+        HOME="/homes/$name" guardianctl register \
             --config-path "/homes/$name/.timeflare/guardian/config.yaml" \
             --stake-amount "$GUARDIAN_STAKE" \
             --available-until "$GUARDIAN_AVAILABLE_UNTIL" \

@@ -56,22 +56,18 @@ guardiand health --config-path ~/.timeflare/guardian/guardian-01/config.yaml
 
 # Open a guardian's read-only operator dashboard. Guardian i serves on
 # 21200 + (i-1), so guardian-01 is 21200 and guardian-24 is 21223.
-# Served on bind_address (0.0.0.0 by default), so it is authenticated: sign in
-# as user 'guardian' with the devnet password 'timeflare-devnet', which
-# devnet/guardians.sh sets on every guardian. Each port is a separate browser
-# origin, so visiting several dashboards means several prompts.
+# Unauthenticated as of guardian v0.0.4: every field it serves is something the
+# chain already publishes about that guardian, or plain liveness, so there is no
+# credential to supply and nothing for the devnet to provision.
 open http://127.0.0.1:21200
 
 # Or read one section without a browser — the page polls exactly these:
-curl -su guardian:timeflare-devnet http://127.0.0.1:21200/api/vitals      | jq
-curl -su guardian:timeflare-devnet http://127.0.0.1:21200/api/assignments | jq '.at_risk'
-curl -su guardian:timeflare-devnet http://127.0.0.1:21200/api/economics   | jq '{bond_k_display, float_unlocked_uveil, active_bond_count}'
-curl -su guardian:timeflare-devnet http://127.0.0.1:21200/api/keys        | jq '{fingerprints_match, plaintext_key_warning, current_epoch}'
+curl -s http://127.0.0.1:21200/api/vitals      | jq
+curl -s http://127.0.0.1:21200/api/assignments | jq '.at_risk'
+curl -s http://127.0.0.1:21200/api/economics   | jq '{bond_k_display, float_unlocked_uveil, active_bond_count}'
+curl -s http://127.0.0.1:21200/api/keys        | jq '{fingerprints_match, plaintext_key_warning, current_epoch}'
 
-# On a real guardian, set the credential before the dashboard will serve at all:
-guardiand config set-dashboard-password            # prompts twice, no echo
-guardiand config set-dashboard-password --generate # generated, printed once
-guardiand config doctor                            # reports the dashboard's exposure state
+guardianctl config doctor   # reports what the dashboard exposes, among other checks
 ```
 
 ### **👮 Guardian Operations**
@@ -93,15 +89,15 @@ guardiand config doctor                            # reports the dashboard's exp
 # dev passphrase (override with GUARDIAN_KEY_PASSPHRASE=... before dev-up)
 
 # Export an encrypted backup bundle for a devnet guardian
-guardiand key backup --config-path ~/.timeflare/guardian/guardian-01/config.yaml \
+guardianctl key backup --config-path ~/.timeflare/guardian/guardian-01/config.yaml \
   --output /tmp/guardian-01.tfb
 
 # Restore it (chain verification against the registered record)
-guardiand key restore --config-path ~/.timeflare/guardian/guardian-01/config.yaml \
+guardianctl key restore --config-path ~/.timeflare/guardian/guardian-01/config.yaml \
   --input /tmp/guardian-01.tfb --force
 
 # Encrypt a legacy plaintext key in place
-guardiand config migrate-key --config-path ~/.timeflare/guardian/guardian-01/config.yaml
+guardianctl config migrate-key --config-path ~/.timeflare/guardian/guardian-01/config.yaml
 
 # Startup self-check: swap in a wrong private_key and 'guardiand start'
 # refuses to run (share key must derive the registered public key)
@@ -111,7 +107,7 @@ guardiand config migrate-key --config-path ~/.timeflare/guardian/guardian-01/con
 ```bash
 # Full daemon ceremony: generate → backup bundle (whole keyring) → submit →
 # retire the old key beside the new one (private_key.epoch<N>)
-guardiand rotate-key --config-path ~/.timeflare/guardian/guardian-01/config.yaml \
+guardianctl rotate-key --config-path ~/.timeflare/guardian/guardian-01/config.yaml \
   --backup-output /tmp/guardian-01-rotation.tfb \
   --backup-passphrase-file /tmp/backup-pass --yes
 

@@ -70,7 +70,7 @@ get_genesis_keyring_dir() {
     echo "$base_dir/genesis-keyring"
 }
 
-# Create keyring passphrase file for guardian (used by guardiand config init)
+# Create keyring passphrase file for guardian (used by guardianctl config init)
 # Usage: create_guardian_keyring_file <guardian_name> <guardian_home>
 create_guardian_keyring_file() {
     local guardian_name="$1"

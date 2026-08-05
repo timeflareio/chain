@@ -229,7 +229,7 @@ Rotate the guardian's share-encryption key forward for **future** assignments. T
 
 ```bash
 # Rotate to a freshly generated key (the guardian daemon wraps this in
-# `guardiand rotate-key`, which backs the new key up BEFORE submitting)
+# `guardianctl rotate-key`, which backs the new key up BEFORE submitting)
 timeflared tx secrets guardian-rotate-key \
   <64-hex-char-new-x25519-public-key> \
   --from guardian-account
