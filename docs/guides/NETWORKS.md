@@ -197,9 +197,21 @@ convenience, not a rule.
 
 What *is* disciplined is where the default comes from. No script carries one:
 `setup-chain.sh` and `generate-compose.sh` read the registry, and `init-chain.sh`
-refuses to start without being told rather than holding a third opinion. The
-scenario suite reports the cadence it measured, so a long run is understood before
-the wait rather than after it.
+refuses to start without being told rather than holding a third opinion.
+
+Both suites report the cadence they measured before they start waiting, and name the
+command when it is slower than the test cadence:
+
+```
+[cadence] ~6.0s per block
+[cadence] slower than the test cadence (1s), so this run will take
+[cadence] proportionally longer. To restart the devnet at the test cadence:
+[cadence]   TIMEFLARE_BLOCK_TIME=1s make dev-reset
+```
+
+It compares what it measured, not whether `TIMEFLARE_BLOCK_TIME` is set in the
+current shell — the cadence belongs to whoever started the chain, which may have
+been another session. It never fails a run.
 
 ## Consuming it
 
