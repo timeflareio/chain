@@ -51,12 +51,26 @@ The invariant separates three things, and only the first is forbidden:
   because there is no measurement yet; that is the chicken and egg, not a
   conversion of anything the protocol means.
 
-This plan therefore does two separable things: it stops the cadence being eleven
-literals, and it puts a guard under the invariant so it stays true.
+### The rule
+
+**Two values, two homes.**
+
+- **6s is the real cadence**, defined once in `networks.json` per network.
+- **1s is the test cadence**, defined once, used by every test path — CI and a
+  manual run alike.
+
+`TIMEFLARE_BLOCK_TIME` remains the escape for a one-off experiment, but no target
+and no workflow carries its own default. Anything that is neither the real value
+nor the test value should not exist: the three `2s` defaults today are exactly
+that, a third cadence nobody chose deliberately.
+
+This plan therefore does two separable things: it reduces eleven literals to those
+two definitions, and it puts a guard under the invariant so it stays true.
 
 ## 2. Why the definition needs centralising
 
-The number is written eleven times, all literals, nothing derived from anything:
+The cadence is written eleven times as a literal, expressing **three** different
+values — and only two of them were ever chosen on purpose:
 
 | Where | Value | Governs |
 |---|---|---|
@@ -76,6 +90,10 @@ CI sets `1s` for both the devnet and the suites — the workflow records why, th
 block-denominated waits at 6s would take the suite past forty minutes — while the
 guardians in that run carry `block_time: 6s`, from a Go default that never sees the
 variable. So the mismatch is live and has been silent.
+
+The `2s` group is the clearer symptom. Three targets pick a cadence that is neither
+the deployment value nor the test value, each with its own default, and nothing
+records why two seconds. Under the rule they become the test value.
 
 ## 3. What the mismatch actually costs, measured
 
@@ -108,7 +126,7 @@ keeps that true rather than accidental.
 | chain devnet (native and compose) | the `networks.json` entry, read in one place | `TIMEFLARE_BLOCK_TIME` |
 | guardian | **nothing** — it records and prints block counts, and derives its poll interval from the network entry at `config init` without storing a cadence | the network entry the override already reached |
 | SDK | measured from block samples, as now; fallback from the network entry the client fetches | n/a — it observes rather than configures |
-| CI | sets the override once; every component follows |  |
+| test paths (CI, `e2e-full-native`, the dependency gate, compose full-E2E) | the single test cadence — `1s` — defined once | `TIMEFLARE_BLOCK_TIME` for a one-off |
 
 `networks.json` is the right home and the surrounding machinery already exists:
 `CLAUDE.md` describes it as the single definition of the networks this chain runs
@@ -127,11 +145,19 @@ scenario suite and a seventy-minute one.
 
 ## 5. Phases
 
-**Phase 1 — one definition, chain-side.** Add the cadence to `networks.json`; the
-three devnet scripts read it; the three `:-6s` and three `:-2s` literals collapse
-to one override applied once; `make verify` catches drift as it already does for
-the rest of the file; `docs/guides/NETWORKS.md` gains the field. No consumer
-changes, so this lands alone.
+**Phase 1 — two definitions, chain-side.** Add the cadence to `networks.json`; the
+three devnet scripts read it; the three `:-6s` defaults go. The three `:-2s`
+defaults and CI's two `1s` literals collapse to one test cadence defined once, which
+every test path uses. `make verify` catches drift as it already does for the rest of
+the file, and `docs/guides/NETWORKS.md` gains the field. No consumer changes, so
+this lands alone.
+
+One thing to verify rather than assume while collapsing `2s` to `1s`: the compose
+full-E2E runs multiple validators (`make/docker.mk` passes `VALIDATOR_COUNT`), and
+multi-validator consensus at one second is a different proposition from the single
+validator the native devnet runs. If it will not hold, that is a reason for the
+compose path to keep its own value — and a reason to write down why, which nothing
+does today.
 
 **Phase 2 — the guardian stops converting.** `block_time` leaves its config
 entirely. `metrics.RecordReveal` takes blocks rather than a duration;
@@ -183,6 +209,10 @@ means the same thing as a slow one.
 5. **The override exists for tests and devnet runs.** It is honoured at start, on
    the chain and on a guardian's `config init`. Hot-reloading a running chain is
    not what this solves.
+6. **Two values, two homes** (§1). 6s is the real cadence in `networks.json`; 1s is
+   the test cadence defined once and used by every test path, automated or manual.
+   The three `2s` defaults are a third cadence nobody chose, and they become the
+   test value unless multi-validator compose consensus proves otherwise.
 
 ## 7. What this plan does not solve
 
