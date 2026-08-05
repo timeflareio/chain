@@ -1,10 +1,10 @@
 # Block-Time Configuration — Plan
 
-*Gives the block cadence one definition that every component derives from, one
-override that reaches all of them at runtime, and a guard that keeps time out of
-everything below the presentation surface. Today the number is a literal in
-eleven places across two repositories, and CI runs a 1s chain against guardians
-configured for 6s.*
+*Reduces the block cadence to two values in two homes — the deployment value and
+the test value — leaves the components that do not need it carrying nothing, and
+puts a guard under the rule that time appears only at a presentation surface.
+Today the number is a literal in eleven places across two repositories, expressing
+three different values, and CI runs a 1s chain against guardians configured for 6s.*
 
 > **Status: ready** — created and ruled 5 August 2026 (§6). Executable.
 > **Priority**: P3 — nothing is behaviourally broken (§3), so this is
@@ -203,10 +203,11 @@ entry the client already fetches, leaving the constant as a last resort.
 it is a sampling distance, so a later reader does not mistake it for a timing
 guarantee.
 
-**Phase 5 — decide the default.** With the cadence coherent end to end, validate
-the scenario suite at `2s` locally and decide whether the devnet default moves off
-`6s`. Last deliberately: a faster devnet is only worth having once a fast run
-means the same thing as a slow one.
+**Phase 5 — prove the collapse.** The default is settled (§6.6), so what is left
+is verification rather than a decision: run the scenario suite at the test cadence
+on the compose stack with its validator count, and confirm nothing depends on `2s`.
+If something does, that path keeps a value with the reason recorded beside it. Last
+deliberately, because it is the only phase that can send work back to phase 1.
 
 ## 6. Decisions — RULED (5 August 2026)
 
