@@ -82,6 +82,7 @@ fallback — the copy shipped with the build, or the last one read.
 | `label` | Human-readable name for a settings screen. |
 | `chainId` | The id the node reports, and the one a client must assert before signing. Never absent: a network that cannot be identified cannot be signed for safely. |
 | `local` | Whether the network is loopback-scoped — see below. |
+| `blockTime` | Optional. The cadence the network runs at, as a duration (`6s`). Deployment fact, not protocol: every window the protocol defines is a block count, so this changes what a window costs in seconds and nothing about what it means. Absent means "measure it", which a client with a block clock does anyway. |
 | `endpoints` | `rpc`, `rest` and `grpc`, each a list. |
 
 ## Why three endpoints
@@ -164,17 +165,37 @@ default.
 `make verify-networks` runs as part of `make verify` and enforces:
 
 - the file is valid JSON, and `default` names a network that exists;
-- ids are unique, and every entry carries all six fields;
+- ids are unique, and every entry carries all six required fields;
 - every `chainId` is a well-formed chain id;
+- a `blockTime`, where stated, is a duration `timeout_commit` accepts;
 - `local` entries use a loopback host, and non-local entries use `https` for
   `rpc` and `rest`;
 - `addressPrefix` matches `AccountAddressPrefix` in `app/app.go`;
 - the devnet `chainId` matches the default `CHAIN_ID` in
-  `devnet/lib/common-utils.sh`.
+  `devnet/lib/common-utils.sh`;
+- no devnet script carries its own block-time default, because the registry
+  states the cadence and the scripts read it;
+- no workflow sets a block time other than `TEST_BLOCK_TIME` from
+  `make/common.mk`, which is where the test cadence is defined.
 
-The last two are the point of the file rather than incidental tidiness: they are
-the values that were previously copied by hand into other repositories, and the
-check is what stops this definition and its origin drifting apart.
+The last four are the point of the file rather than incidental tidiness: they are
+the values that were previously copied by hand — into other repositories, or into
+a script that had its own opinion — and the check is what stops this definition
+and its origin drifting apart.
+
+## The cadence, and the two values
+
+`blockTime` is the deployment cadence: what a devnet brought up for interactive
+work runs at, because that is what the network is. Tests override it with
+`TEST_BLOCK_TIME` (`make/common.mk`), because every wait in the e2e and scenario
+suites is a block distance — at the deployment cadence they take about six times
+as long and assert exactly the same things.
+
+Those are the only two values. `TIMEFLARE_BLOCK_TIME` remains the escape for a
+one-off experiment, but nothing carries a default of its own: `setup-chain.sh` and
+`generate-compose.sh` read the registry, `init-chain.sh` refuses to start without
+being told, and the scenario suite reports the cadence it measured so a long run
+is understood before the wait rather than after it.
 
 ## Consuming it
 

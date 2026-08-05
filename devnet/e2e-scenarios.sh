@@ -87,6 +87,23 @@ SDK_DIR="${SDK_DIR:-.devnet/sdk}"
 GUARDIAN_HEALTH_TIMEOUT="${GUARDIAN_HEALTH_TIMEOUT:-180}"
 
 RPC="${CHAIN_RPC:-http://localhost:26657}"
+
+# Seconds per block, measured from two consecutive headers. Empty when the chain
+# cannot be read: a cadence note is never worth failing a run over.
+measure_block_seconds() {
+    local h t1 t2
+    h=$(curl -s --max-time 3 "$RPC/status" | jq -r '.result.sync_info.latest_block_height' 2>/dev/null) || return 1
+    [ -n "$h" ] && [ "$h" != "null" ] && [ "$h" -gt 1 ] 2>/dev/null || return 1
+    t1=$(curl -s --max-time 3 "$RPC/block?height=$((h - 1))" | jq -r '.result.block.header.time' 2>/dev/null)
+    t2=$(curl -s --max-time 3 "$RPC/block?height=$h" | jq -r '.result.block.header.time' 2>/dev/null)
+    [ -n "$t1" ] && [ -n "$t2" ] && [ "$t1" != "null" ] && [ "$t2" != "null" ] || return 1
+    python3 -c 'import sys,datetime
+def p(x):
+    x=x.rstrip("Z")
+    if "." in x: x=x[:x.index(".")+7]
+    return datetime.datetime.fromisoformat(x)
+print("%.1f" % (p(sys.argv[2])-p(sys.argv[1])).total_seconds())' "$t1" "$t2" 2>/dev/null || return 1
+}
 DEVNET_DIR=".devnet"
 SCENARIO_DIR="$DEVNET_DIR/scenarios"
 # TIMEFLARE_HOME redirects the user keyring so the suite drives the native
@@ -464,6 +481,20 @@ if [ "$GUARDIAN_CONTROL" = "native" ]; then
     cv=$(guardianctl version 2>/dev/null | awk '/^Version:/{print $2}')
     info "guardiand: $(command -v guardiand) ($dv)"
     info "guardianctl: $(command -v guardianctl) ($cv)"
+
+    # Every wait in this suite is a block distance, so the cadence decides how long
+    # the run takes and nothing about what it asserts. Measure it and say so: at the
+    # deployment cadence the suite takes roughly six times as long, which is worth
+    # knowing before the wait rather than after it.
+    measured=$(measure_block_seconds || true)
+    if [ -n "$measured" ]; then
+        info "chain cadence: ~${measured}s per block"
+        if [ -z "${TIMEFLARE_BLOCK_TIME:-}" ]; then
+            info "  no TIMEFLARE_BLOCK_TIME set, so this chain runs the deployment"
+            info "  cadence — expect a long run. Bring a chain up at the test cadence"
+            info "  first if that is not what you wanted."
+        fi
+    fi
     # They share a config schema, so a mismatched pair is a real hazard rather than
     # untidiness — one writes a file the other cannot read.
     if [ "$dv" != "$cv" ]; then

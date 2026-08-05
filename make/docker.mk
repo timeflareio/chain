@@ -192,7 +192,7 @@ E2E_FULL_VALIDATORS ?= 3
 ## full E2E with cleanup: fresh $(E2E_FULL_VALIDATORS)-validator compose stack → lifecycle → app-hash determinism check → teardown
 e2e-full: go-install
 	@echo "🧪 Full end-to-end run: fresh $(E2E_FULL_VALIDATORS)-validator compose stack → lifecycle → teardown"
-	@TIMEFLARE_BLOCK_TIME=$${TIMEFLARE_BLOCK_TIME:-2s} VALIDATOR_COUNT=$(E2E_FULL_VALIDATORS) $(MAKE) docker-reset
+	@TIMEFLARE_BLOCK_TIME=$${TIMEFLARE_BLOCK_TIME:-$(TEST_BLOCK_TIME)} VALIDATOR_COUNT=$(E2E_FULL_VALIDATORS) $(MAKE) docker-reset
 	@status=0; $(MAKE) docker-e2e || status=$$?; \
 	if [ $$status -eq 0 ]; then \
 		./devnet/docker/check-app-hash.sh $(E2E_FULL_VALIDATORS) || status=$$?; \

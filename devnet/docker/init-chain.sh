@@ -20,7 +20,10 @@ set -euo pipefail
 CHAIN_ID="${CHAIN_ID:-timeflare-test}"
 DENOM="${TIMEFLARE_DENOM:-uveil}"
 MIN_GAS_PRICE="${TIMEFLARE_MIN_GAS_PRICE:-0.1uveil}"
-BLOCK_TIME="${TIMEFLARE_BLOCK_TIME:-6s}"
+# Passed in by generate-compose.sh, which read it from networks.json. A default
+# here would be a second opinion about the cadence, and a silent one — so this
+# refuses instead.
+BLOCK_TIME="${TIMEFLARE_BLOCK_TIME:?TIMEFLARE_BLOCK_TIME must be set by the compose environment}"
 VALIDATOR_COUNT="${VALIDATOR_COUNT:-1}"
 GOV_VOTING_PERIOD="${TIMEFLARE_GOV_VOTING_PERIOD:-60s}"
 
