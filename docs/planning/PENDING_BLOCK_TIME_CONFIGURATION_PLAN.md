@@ -64,12 +64,16 @@ The invariant separates three things, and only the first is forbidden:
 - **1s is the test cadence**, defined once, applied only by a path that exists to
   run tests.
 
-`TIMEFLARE_BLOCK_TIME` remains the escape for a one-off experiment, but no target
-and no workflow carries its own default. Anything that is neither the real value
-nor the test value should not exist: the three `2s` defaults are that, a third
-cadence nobody chose. They drop to the test value unless a reason to keep them
-turns up — and the burden is on finding the reason, not on justifying the
-collapse.
+**One default, one canonical test value, and overrides free.**
+`TIMEFLARE_BLOCK_TIME` sets the cadence to whatever a test, a bespoke devnet or an
+experiment needs, and nothing restricts the choice — two seconds, thirty seconds, it
+is the run's business. What is disciplined is where the *default* comes from: the
+registry states it, and no target, script or workflow carries one of its own.
+
+The three `2s` defaults fail that, not because two seconds is wrong but because
+nothing records why they chose it. They take the canonical test value unless a
+reason to keep a distinct one turns up — and then the reason is written down beside
+it.
 
 **A test path owns bringing the chain up at the test cadence.** The cadence is a
 property of the running chain, not of the command that drives it, so `make e2e` and
@@ -232,13 +236,14 @@ deliberately, because it is the only phase that can send work back to phase 1.
 5. **The override exists for tests and devnet runs.** It is honoured at start, on
    the chain and on a guardian's `config init`. Hot-reloading a running chain is
    not what this solves.
-6. **Two values, two homes** (§1). 6s is the real cadence in `networks.json`, and a
-   devnet for interactive work runs at it. 1s is the test cadence, defined once and
-   applied by the paths that exist to run tests. The three `2s` defaults drop to the
-   test value unless a reason to keep them turns up, and the burden is on finding
-   the reason. A test path brings the chain up at the test cadence rather than
-   assuming one, and the suites report the cadence they found when it is not the
-   test one.
+6. **Two values, two homes — and overrides free** (§1). 6s is the shipping cadence
+   in `networks.json`, which is why it is published: a downstream learns it from the
+   registry. 1s is the canonical test value in `make/common.mk`. Neither is
+   enforced on a run — `TIMEFLARE_BLOCK_TIME` sets any cadence a test or a bespoke
+   devnet needs. What is checked is that no script carries its own default. The
+   three `2s` defaults take the canonical value because nothing records why they
+   chose two seconds, and a test path brings the chain up at the cadence it wants
+   rather than inheriting one, with the suites reporting what they measured.
 
 ## 7. What this plan does not solve
 
