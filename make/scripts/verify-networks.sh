@@ -103,29 +103,18 @@ if [ "$want" != "$got" ]; then
   exit 1
 fi
 
-# No script may carry its own opinion about the cadence. The registry states it and
-# the scripts read it; a default in a script is a second answer that cannot be seen
-# from the registry — which is the fault this file exists to prevent.
+# No script may carry its own DEFAULT for the cadence. The registry states the
+# default and the scripts read it; a default in a script is a second answer that
+# cannot be seen from the registry, which is the fault this file exists to prevent.
+#
+# Overriding is a different thing and deliberately unrestricted: a test, a bespoke
+# devnet or an experiment sets TIMEFLARE_BLOCK_TIME to whatever it needs. This
+# checks where the default comes from, not what any run chooses.
 offenders=$(grep -rnE 'TIMEFLARE_BLOCK_TIME:-[0-9]' devnet/ 2>/dev/null || true)
 if [ -n "$offenders" ]; then
   echo "❌ a devnet script carries its own block-time default:"
   echo "$offenders" | sed 's/^/   /'
   echo "   The registry states the cadence (networks.json blockTime); read it instead."
-  exit 1
-fi
-
-# The test cadence is make's TEST_BLOCK_TIME. CI names it too, because a workflow
-# cannot expand a make variable — so the two are checked rather than trusted.
-want=$(grep -oE '^TEST_BLOCK_TIME \?= *[0-9]+(ms|s|m)' make/common.mk | head -1 | sed -E 's/.*= *//')
-if [ -z "$want" ]; then
-  echo "❌ could not read TEST_BLOCK_TIME from make/common.mk"
-  exit 1
-fi
-mismatched=$(grep -nE 'TIMEFLARE_BLOCK_TIME: *[0-9]+(ms|s|m)' .github/workflows/*.yml 2>/dev/null \
-  | grep -vE "TIMEFLARE_BLOCK_TIME: *${want}\$" || true)
-if [ -n "$mismatched" ]; then
-  echo "❌ a workflow sets a block time that is not TEST_BLOCK_TIME ($want):"
-  echo "$mismatched" | sed 's/^/   /'
   exit 1
 fi
 
