@@ -33,7 +33,8 @@ type walletDerivationCorpus struct {
 
 func loadWalletDerivationCorpus(t *testing.T) walletDerivationCorpus {
 	t.Helper()
-	raw, err := os.ReadFile(filepath.Join("..", "testdata", "vectors", "wallet_derivation.json"))
+	raw, err := os.ReadFile(filepath.Join(
+		"..", "x", "secrets", "types", "testdata", "vectors", "wallet_derivation.json"))
 	require.NoError(t, err)
 	var corpus walletDerivationCorpus
 	require.NoError(t, json.Unmarshal(raw, &corpus))

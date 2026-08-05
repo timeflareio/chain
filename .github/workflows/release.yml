@@ -106,9 +106,17 @@ jobs:
 
       # The protocol surface.
       #
-      # The vectors tarball IS consumed at a pinned version: the SDK, the
-      # guardian and the mobile client all assert the chain-semantics files
-      # against its per-file manifest.
+      # The vectors tarball IS consumed at a pinned version: the SDK and the
+      # mobile client assert the chain-semantics files against its per-file
+      # manifest.
+      #
+      # The corpus lives in two places, and the tarball carries both. A file with
+      # a Go consumer outside this repository belongs in x/secrets/types, so it
+      # travels with the module that consumer already requires — that is
+      # wallet_derivation and client_conventions, which the guardian asserts. The
+      # rest have no Go consumer beyond this repository and stay in testdata/.
+      # Consumers locate files by name within the extracted tree, so the split is
+      # invisible to them.
       #
       # The proto tarball currently has no consumer. It carries proto/ alone, and
       # buf needs buf.yaml and buf.lock from the repository root to generate — so
@@ -120,11 +128,29 @@ jobs:
         run: |
           set -euo pipefail
           tar -czf "dist/timeflare-proto-${GITHUB_REF_NAME}.tar.gz" proto/
-          tar -czf "dist/timeflare-chain-vectors-${GITHUB_REF_NAME}.tar.gz" testdata/vectors/
-          ( cd testdata/vectors && sha256sum ./*.json ) \
-            > "dist/timeflare-chain-vectors-${GITHUB_REF_NAME}.sha256"
+          tar -czf "dist/timeflare-chain-vectors-${GITHUB_REF_NAME}.tar.gz" \
+            testdata/vectors/ x/secrets/types/testdata/vectors/
+          {
+            ( cd testdata/vectors && sha256sum ./*.json )
+            ( cd x/secrets/types/testdata/vectors && sha256sum ./*.json )
+          } > "dist/timeflare-chain-vectors-${GITHUB_REF_NAME}.sha256"
           ( cd dist && sha256sum timeflared-* ./*.tar.gz > "timeflare-${GITHUB_REF_NAME}-checksums.txt" )
           ls -la dist/
+
+      # Consumers assert these by name against the manifest, so a file dropping
+      # out of the tarball breaks them at their next bump rather than here.
+      - name: Assert the corpus is complete
+        run: |
+          set -euo pipefail
+          tarball="dist/timeflare-chain-vectors-${GITHUB_REF_NAME}.tar.gz"
+          manifest="dist/timeflare-chain-vectors-${GITHUB_REF_NAME}.sha256"
+          for v in client_conventions creation_fee dials share_band tx_gas wallet_derivation; do
+            tar -tzf "${tarball}" | grep -q "/${v}.json$" || {
+              echo "::error::${v}.json is absent from the vectors tarball"; exit 1; }
+            grep -qE "[ /]${v}\.json$" "${manifest}" || {
+              echo "::error::${v}.json is absent from the vectors manifest"; exit 1; }
+          done
+          echo "✅ all six chain-semantics vectors are published with a manifest entry"
 
       - name: Compose release notes
         run: |
