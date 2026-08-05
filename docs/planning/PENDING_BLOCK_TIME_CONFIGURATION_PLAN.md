@@ -6,7 +6,10 @@ puts a guard under the rule that time appears only at a presentation surface.
 Today the number is a literal in eleven places across two repositories, expressing
 three different values, and CI runs a 1s chain against guardians configured for 6s.*
 
-> **Status: ready** — created and ruled 5 August 2026 (§6). Executable.
+> **Status: in progress** — created and ruled 5 August 2026 (§6). Phase 1 is
+> `blocktime-phase-1`, chain #25. Phases 2 and 4 need a chain release carrying
+> phase 1; phase 3 needs phase 2; phase 5 is last because it is the only one that
+> can send work back to phase 1.
 > **Priority**: P3 — nothing is behaviourally broken (§3), so this is
 > maintainability plus two wrong numbers in operator-facing output. It becomes P2
 > the moment anything below the surface starts converting.
