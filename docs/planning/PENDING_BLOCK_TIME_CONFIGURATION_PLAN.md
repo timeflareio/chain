@@ -6,10 +6,11 @@ puts a guard under the rule that time appears only at a presentation surface.
 Today the number is a literal in eleven places across two repositories, expressing
 three different values, and CI runs a 1s chain against guardians configured for 6s.*
 
-> **Status: in progress** — created and ruled 5 August 2026 (§6). Phase 1 is
-> `blocktime-phase-1`, chain #25. Phases 2 and 4 need a chain release carrying
-> phase 1; phase 3 needs phase 2; phase 5 is last because it is the only one that
-> can send work back to phase 1.
+> **Status: in progress** — created and ruled 5 August 2026 (§6). Phase 1 landed
+> 6 August 2026 (chain #25). Phase 2 needs only that merge, because the guardian
+> fetches the registry from `main`; phase 3 follows phase 2; phase 4 is a ruling
+> rather than work (§5); phase 5 is last, being the only phase that can send work
+> back to phase 1.
 > **Priority**: P3 — nothing is behaviourally broken (§3), so this is
 > maintainability plus two wrong numbers in operator-facing output. It becomes P2
 > the moment anything below the surface starts converting.
@@ -185,8 +186,10 @@ cadence and saying so when it is not the test one. That is a few lines, and it i
 the difference between a ninety-minute wait understood in advance and one
 discovered at the end.
 
-**Phase 2 — the guardian stops converting.** `block_time` leaves its config
-entirely. `metrics.RecordReveal` takes blocks rather than a duration;
+**Phase 2 — the guardian stops converting.** It needs no chain release: the
+guardian fetches the registry from
+`raw.githubusercontent.com/timeflareio/chain/main/networks.json`, so phase 1 being
+on `main` is enough. `block_time` leaves its config entirely. `metrics.RecordReveal` takes blocks rather than a duration;
 `register.go` prints block counts, naming the assumed cadence inline where a
 human-readable figure helps ("5,256,000 blocks, about a year at 6s") so the
 assumption is visible rather than embedded. `guardianctl config init` derives
@@ -204,11 +207,19 @@ false positives. After phase 2 the guardian has nothing to exempt. The check is
 what stops a conversion appearing in a keeper or a reveal path, where it would turn
 a cosmetic difference into a behavioural one.
 
-**Phase 4 — the SDK's fallback.** Source the unmeasured fallback from the network
-entry the client already fetches, leaving the constant as a last resort.
-`ANCHOR_TARGET_BLOCKS` keeps deriving from the constant and gains a comment saying
-it is a sampling distance, so a later reader does not mistake it for a timing
-guarantee.
+**Phase 4 — the SDK's seed, and whether it needs changing at all.** The SDK has no
+registry reader: the guardian fetches `networks.json` and the mobile client bundles
+a copy with the same URL as its live source, but nothing in `typescript-sdk/src`
+reads it. Sourcing the fallback from the registry therefore means giving the SDK a
+capability it does not have, which needs an argued case rather than an assumption.
+
+The case is weak. `blockclock.ts` measures the real cadence and uses the constant
+only when it has no measurement, and the seal path — the one conversion that
+matters — insists on a measurement rather than the seed. So the likely outcome is
+that the constant stays and gains a comment naming it a seed and a sampling
+distance rather than a timing guarantee, with `ANCHOR_TARGET_BLOCKS` unchanged.
+Confirm that before writing code, because the alternative is a new capability in
+the package that most needs to stay small.
 
 **Phase 5 — prove the collapse.** The default is settled (§6.6), so what is left
 is verification rather than a decision: run the scenario suite at the test cadence
