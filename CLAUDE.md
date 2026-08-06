@@ -144,6 +144,22 @@ consumer at once.
 The rules for consulting and disputing it are project-wide — see "Specification
 authority" in the workspace root `CLAUDE.md`.
 
+## 🚨 The protocol is denominated in blocks, never wall-clock
+
+**Never read the block timestamp in `x/secrets`.** Every window, deadline and
+interval the protocol defines is a block count, and `ctx.BlockHeight()` is how you
+reach it.
+
+The cadence is a deployment fact, not a protocol one: it differs between networks,
+and a devnet runs six seconds while the e2e and scenario suites run one. A decision
+taken on wall-clock therefore means something different on each of them, and the
+symptom — a window that behaves differently on a devnet than in CI — reads as a
+protocol bug rather than the configuration difference it is.
+
+Converting a height into a date is a client's job, at the surface where a person
+sees it. The chain publishes the cadence in `networks.json` for exactly that, and
+`docs/planning/PENDING_BLOCK_TIME_CONFIGURATION_PLAN.md` has the reasoning.
+
 ## 🚨 Wire-field renames and removals
 
 **The component that gets missed lives in another repository now.** The
