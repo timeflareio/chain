@@ -198,14 +198,18 @@ persist it, so the daemon has nothing to keep in step and the
 `polling_interval < block_time/2` check moves to the one place that knows both.
 Needs a chain release carrying phase 1, then a guardian release.
 
-**Phase 3 — guard the invariant.** A `make verify` check in the house style of
-`verify-boundaries` and `verify-choke-points`: below a presentation surface, no
-symbol converts blocks into wall-clock to decide anything. It must pass the three
-cases §1 separates — forbidding the first, allowing a surface conversion and a
-measurement window — so the SDK's seal path and `ANCHOR_TARGET_BLOCKS` are not
-false positives. After phase 2 the guardian has nothing to exempt. The check is
-what stops a conversion appearing in a keeper or a reveal path, where it would turn
-a cosmetic difference into a behavioural one.
+**Phase 3 — state the invariant where a reader meets it.** A rule in each
+repository's `CLAUDE.md` rather than a `make` check. The chain's says never read the
+block timestamp in `x/secrets`, with the reasoning that matters: the cadence is a
+deployment fact, so a decision taken on wall-clock means something different on a
+devnet than in CI, and the symptom reads as a protocol bug rather than the
+configuration difference it is.
+
+Not tooling, deliberately. A check written today would guard against something no
+repository does: the chain never reads the timestamp, and after phase 2 the guardian
+carries no cadence at all. The SDK is the one place a conversion legitimately lives,
+confined to `blockclock.ts`, so a guard there would allowlist correct code rather
+than prevent incorrect code. The instruction is where the rule will actually be met.
 
 **Phase 4 — name the SDK's seed for what it is.** The constant stays hardcoded.
 `BLOCK_TIME_ESTIMATE_MS` gains a comment saying it is a cold-start seed and a
