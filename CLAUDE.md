@@ -158,7 +158,7 @@ protocol bug rather than the configuration difference it is.
 
 Converting a height into a date is a client's job, at the surface where a person
 sees it. The chain publishes the cadence in `networks.json` for exactly that, and
-`docs/planning/PENDING_BLOCK_TIME_CONFIGURATION_PLAN.md` has the reasoning.
+`docs/planning/done/DONE_BLOCK_TIME_CONFIGURATION_PLAN.md` has the reasoning.
 
 ## 🚨 Wire-field renames and removals
 

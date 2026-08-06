@@ -6,10 +6,11 @@ puts a guard under the rule that time appears only at a presentation surface.
 Today the number is a literal in eleven places across two repositories, expressing
 three different values, and CI runs a 1s chain against guardians configured for 6s.*
 
-> **Status: in progress** — created and ruled 5 August 2026 (§6). Landed 6 August
-> 2026: phase 1 (chain #25), phase 2 (guardian #15), phase 3 (chain #27) and
-> phase 4 (typescript-sdk #13). Phase 5 remains, and is the only one that can send
-> work back to phase 1.
+> **Status: done** — created and ruled 5 August 2026 (§6), executed 6 August 2026:
+> phase 1 (chain #25), phase 2 (guardian #15), phase 3 (chain #27), phase 4
+> (typescript-sdk #13). Phase 5 verified the collapse rather than changing anything:
+> `make e2e-full` passed at the test cadence with three validators, agreeing on the
+> app hash at height 194, so nothing depended on the `2s` defaults.
 > **Priority**: P3 — nothing is behaviourally broken (§3), so this is
 > maintainability plus two wrong numbers in operator-facing output. It becomes P2
 > the moment anything below the surface starts converting.
@@ -225,11 +226,12 @@ know their network — the guardian and the mobile client — read `networks.jso
 directly, so the knowledge lives where it already is rather than being plumbed
 through a package whose value is staying small.
 
-**Phase 5 — prove the collapse.** The default is settled (§6.6), so what is left
-is verification rather than a decision: run the scenario suite at the test cadence
-on the compose stack with its validator count, and confirm nothing depends on `2s`.
-If something does, that path keeps a value with the reason recorded beside it. Last
-deliberately, because it is the only phase that can send work back to phase 1.
+**Phase 5 — prove the collapse.** Done, and it changed nothing. `make e2e-full`
+brought up a fresh three-validator compose stack at the test cadence, ran the
+lifecycle, and confirmed app-hash agreement across all three at height 194. That
+was the one risk worth checking before collapsing the `2s` defaults: three
+validators independently executing every block at one second and having to agree.
+They do, so no path keeps a cadence of its own and none needs a reason recorded.
 
 ## 6. Decisions — RULED (5 August 2026)
 

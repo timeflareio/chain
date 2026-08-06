@@ -41,7 +41,7 @@ RESET  := $(shell tput -Txterm sgr0)
 # block-denominated deadlines: at the deployment cadence they take about six
 # times as long and cover nothing extra. A target that needs the test cadence
 # takes it from here rather than carrying its own default — see
-# docs/planning/PENDING_BLOCK_TIME_CONFIGURATION_PLAN.md.
+# docs/planning/done/DONE_BLOCK_TIME_CONFIGURATION_PLAN.md.
 TEST_BLOCK_TIME ?= 1s
 
 # Help system configuration
