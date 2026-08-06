@@ -520,6 +520,40 @@ VEIL goes — are catalogued in [ECONOMICS.md](ECONOMICS.md).
 
 ---
 
+### Test-harness determinism
+
+#### 1. The scenario suite constrains selection, so S8 no longer samples a real pool
+
+**Chose**: before reserving its post-rotation secret, S8 clears
+`accepting_secrets` on every guardian outside the pre-rotation secret's selected
+set, so selection has one possible outcome and the rotator is drawn with
+certainty. Nothing about sortition changes — it runs honestly over the candidates
+it is given, and pausing this way is a mechanism guardians genuinely have.
+**Gave up**: S8's draw exercises selection over five candidates instead of
+twenty-four, so it contributes nothing to selection coverage. Read as a
+key-rotation test it loses nothing; read as evidence that selection works over a
+realistic pool it would mislead, and it must not be.
+**Also gave up**: on-chain state that outlives the process. A suite killed between
+park and restore leaves the fleet unable to reserve anything until something
+restores it or the chain is reset — an `EXIT` trap covers every path the suite
+controls, and cannot cover `SIGKILL`.
+**Where decided**: owner ruling, 6 August 2026;
+`done/DONE_E2E_SCENARIO_DETERMINISM_PLAN.md`. Selection's own coverage is
+`x/secrets/keeper/guardian_selection_test.go` and the sortition vectors.
+
+#### 2. Devnet guardian identities are published, and deliberately so
+
+**Chose**: every devnet guardian's signing key derives from the canonical BIP39
+all-zeros test mnemonic at HD account index N, so `guardian-07` holds the same
+address on every run. A ticket is `SHA256(seed ‖ address)`, so without stable
+addresses no run's guardian set can resemble another's, and a log from yesterday
+describes guardians that no longer exist.
+**Gave up**: any secrecy for those keys — anyone can derive them. Confined to the
+devnet by a chain-ID assertion that reads the devnet's ID from `networks.json` and
+fails closed if it cannot; the keys cannot be created against any other chain.
+**Where decided**: `done/DONE_E2E_SCENARIO_DETERMINISM_PLAN.md`. The mechanism is
+`devnet/guardians.sh`.
+
 ### Security model boundaries
 
 #### 1. The chain guarantees reconstruction integrity, never content validity
@@ -1108,3 +1142,46 @@ predicate and the equal-probability claim resting on it.
 each needing a reproducing test or a ruling before it is fixed. Concerns that are
 reachable but unresolved live under Security Observations above; costs
 consciously accepted live in [Accepted Trade-offs](#accepted-trade-offs).
+
+### Closed: three defects in the scenario suite itself
+
+Recorded rather than dropped, because each was invisible for the same reason —
+the suite asserts the chain and nothing asserts the suite — and that reason has
+not gone away.
+
+#### 1. S8's rotator was drawn by lottery, and lost one run in four
+
+The key-rotation scenario needed a *named* guardian to be selected for its
+post-rotation secret, and got there by redrawing until sortition obliged: six
+attempts, five of twenty-four per draw, so `(19/24)^6 ≈ 25%` of runs exhausted
+the budget and failed for no protocol reason. It went unnoticed because S8 skips
+in CI whenever the rotation-interval override is unset, which was always — the
+scenario the job could not afford to run was also the one that would have failed
+weekly. It was observed failing exactly this way while measuring the cadence floor
+(6 August 2026).
+
+**Fixed** by constraining the candidate pool instead of resampling it: park every
+guardian outside the pre-rotation secret's selected set, reserve the second
+secret, restore. Selection then has exactly one possible outcome. See
+`done/DONE_E2E_SCENARIO_DETERMINISM_PLAN.md`.
+
+#### 2. The rebate drill's share band never reached the chain
+
+`create_secret` is documented `manifest offset duration bump` and forwarded four
+arguments; the rebate collection drill called it with five, the fifth being the
+`7:9` band its entire dust-floor calibration was derived from. The band was
+silently dropped and the drill ran the suite's ordinary zero-width 5, so the
+calibration recorded in its comment had never once been exercised.
+
+**Fixed** by forwarding the argument. The lesson is the shape: bash discards extra
+arguments without complaint, so a helper's contract lives only in its comment.
+
+#### 3. Three block-event reads took the first event in the block
+
+S1's `guardian_slashed` and `secret_rewards_distributed`, and S3's
+`secret_rewards_distributed`, read `.[0]` of a height rather than selecting on
+`secret_id`. Correct only while exactly one secret can settle per block, which is
+true of a sequential suite and silently false of anything else — and the failure
+would present as another secret's economics, not as a missing event.
+
+**Fixed** by selecting on `secret_id`, as S4, S5, S8 and S10b already did.

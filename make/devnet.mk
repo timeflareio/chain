@@ -19,6 +19,13 @@
 # secret. Growing N lowers that probability per secret but never removes it. The
 # only thing that tolerates an unresponsive guardian is a band with width
 # (max_shares > min_shares), which is the creator's choice, not a devnet knob.
+#
+# It buys no determinism either, which is worth saying because "raise
+# GUARDIAN_COUNT" is the intuitive and wrong answer to a scenario that needs a
+# named guardian drawn. A bigger pool makes that *less* likely: the chance two
+# independent draws of max_shares intersect is 1 - C(N-5,5)/C(N,5), which falls as
+# N grows — 72.6% at 24, 43.8% at 48. The suite constrains the candidate pool
+# instead ('devnet/guardians.sh park'), which is exact at any N.
 GUARDIAN_COUNT ?= 24
 DEVNET_DIR     := .devnet
 DEVNET_BIN     := $(DEVNET_DIR)/bin
