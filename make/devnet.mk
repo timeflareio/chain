@@ -343,6 +343,7 @@ e2e: sdk-sync
 		echo "🔑 Generating recipient keypair..."; \
 		node $(E2E_KEYGEN) $(RECIPIENT_KEYPAIR); \
 	fi
+	@TEST_BLOCK_TIME=$(TEST_BLOCK_TIME) bash -c 'source devnet/lib/common-utils.sh && cadence_note $(CHAIN_RPC)'
 	@echo "🧪 Running secret lifecycle end-to-end test..."
 	@# RECIPIENT_KEYPAIR is exported explicitly: the SDK examples fall back to a
 	@# path relative to their own tree (<sdk>/../../.devnet), which was this
@@ -361,12 +362,12 @@ e2e-scenarios: sdk-sync
 		node $(E2E_KEYGEN) $(RECIPIENT_KEYPAIR); \
 	fi
 	@echo "🧪 Running failure-path scenario suite..."
-	@$(DEVNET_PATH) RECIPIENT_KEYPAIR=$(CURDIR)/$(RECIPIENT_KEYPAIR) SDK_DIR=$(SDK_DIR) ./devnet/e2e-scenarios.sh
+	@$(DEVNET_PATH) RECIPIENT_KEYPAIR=$(CURDIR)/$(RECIPIENT_KEYPAIR) SDK_DIR=$(SDK_DIR) TEST_BLOCK_TIME=$(TEST_BLOCK_TIME) ./devnet/e2e-scenarios.sh
 
 ## full E2E on the NATIVE devnet: fresh fast-block chain → lifecycle → teardown (fallback when Docker is unavailable; `make e2e-full` targets the compose stack)
 e2e-full-native:
 	@echo "🧪 Full end-to-end run: fresh native devnet → lifecycle → teardown"
-	@TIMEFLARE_BLOCK_TIME=$${TIMEFLARE_BLOCK_TIME:-2s} $(MAKE) dev-reset
+	@TIMEFLARE_BLOCK_TIME=$${TIMEFLARE_BLOCK_TIME:-$(TEST_BLOCK_TIME)} $(MAKE) dev-reset
 	@status=0; $(MAKE) e2e || status=$$?; \
 	echo "🧹 Tearing down devnet..."; \
 	$(MAKE) dev-down; \

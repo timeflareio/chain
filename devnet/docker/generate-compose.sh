@@ -19,7 +19,14 @@ set -euo pipefail
 VALIDATOR_COUNT="${VALIDATOR_COUNT:-1}"
 GUARDIAN_COUNT="${GUARDIAN_COUNT:-24}"
 CHAIN_ID="${CHAIN_ID:-timeflare-test}"
-BLOCK_TIME="${TIMEFLARE_BLOCK_TIME:-6s}"
+# As in the native path: the registry states the cadence, tests override it, and
+# this script carries no default. The value is passed into the container below,
+# so init-chain.sh consumes it rather than reading the registry again.
+BLOCK_TIME="${TIMEFLARE_BLOCK_TIME:-$(jq -r '.networks[] | select(.id == "devnet") | .blockTime' "$(dirname "$0")/../../networks.json")}"
+if [ -z "$BLOCK_TIME" ] || [ "$BLOCK_TIME" = "null" ]; then
+    echo "❌ networks.json has no blockTime for the devnet, and TIMEFLARE_BLOCK_TIME is unset" >&2
+    exit 1
+fi
 PORT_OFFSET="${TIMEFLARE_DOCKER_PORT_OFFSET:-0}"
 OUT="${1:?usage: $0 <output-compose-yaml>}"
 

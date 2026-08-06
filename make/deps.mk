@@ -100,7 +100,7 @@ deps-update-consensus:
 ## T2 devnet gate: fresh devnet → e2e + scenarios → genesis round-trip (catches state-format drift) → teardown
 deps-verify-consensus:
 	@echo "🧪 T2 devnet gate: fresh devnet → e2e → scenarios → genesis round-trip"
-	@TIMEFLARE_BLOCK_TIME=$${TIMEFLARE_BLOCK_TIME:-2s} $(MAKE) dev-reset
+	@TIMEFLARE_BLOCK_TIME=$${TIMEFLARE_BLOCK_TIME:-$(TEST_BLOCK_TIME)} $(MAKE) dev-reset
 	@status=0; \
 	$(MAKE) e2e && $(MAKE) e2e-scenarios || status=$$?; \
 	$(MAKE) dev-down; \

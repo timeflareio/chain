@@ -82,6 +82,7 @@ fallback — the copy shipped with the build, or the last one read.
 | `label` | Human-readable name for a settings screen. |
 | `chainId` | The id the node reports, and the one a client must assert before signing. Never absent: a network that cannot be identified cannot be signed for safely. |
 | `local` | Whether the network is loopback-scoped — see below. |
+| `blockTime` | Optional. The cadence the network runs at, as a duration (`6s`). Deployment fact, not protocol: every window the protocol defines is a block count, so this changes what a window costs in seconds and nothing about what it means. Absent means "measure it", which a client with a block clock does anyway. |
 | `endpoints` | `rpc`, `rest` and `grpc`, each a list. |
 
 ## Why three endpoints
@@ -164,17 +165,53 @@ default.
 `make verify-networks` runs as part of `make verify` and enforces:
 
 - the file is valid JSON, and `default` names a network that exists;
-- ids are unique, and every entry carries all six fields;
+- ids are unique, and every entry carries all six required fields;
 - every `chainId` is a well-formed chain id;
+- a `blockTime`, where stated, is a duration `timeout_commit` accepts;
 - `local` entries use a loopback host, and non-local entries use `https` for
   `rpc` and `rest`;
 - `addressPrefix` matches `AccountAddressPrefix` in `app/app.go`;
 - the devnet `chainId` matches the default `CHAIN_ID` in
-  `devnet/lib/common-utils.sh`.
+  `devnet/lib/common-utils.sh`;
+- no devnet script carries its own block-time *default*, because the registry
+  states it and the scripts read it.
 
-The last two are the point of the file rather than incidental tidiness: they are
-the values that were previously copied by hand into other repositories, and the
-check is what stops this definition and its origin drifting apart.
+The last three are the point of the file rather than incidental tidiness: they are
+the values that were previously copied by hand — into other repositories, or into a
+script that had its own opinion — and the check is what stops this definition and
+its origin drifting apart.
+
+## The cadence, and the two values
+
+`blockTime` is **the cadence the network ships at**, and the reason it is published
+here: a downstream reading this file learns that a devnet block is six seconds
+without being told separately or guessing. A devnet brought up for interactive work
+runs it, because that is what the network is.
+
+**`TIMEFLARE_BLOCK_TIME` overrides it, to any value.** A test, a bespoke devnet or an
+experiment sets whatever it needs; nothing restricts the choice. `TEST_BLOCK_TIME`
+in `make/common.mk` is the value the test paths reach for — one second, because
+every wait in the e2e and scenario suites is a block distance and the deployment
+cadence makes the same assertions take about six times as long — but it is a
+convenience, not a rule.
+
+What *is* disciplined is where the default comes from. No script carries one:
+`setup-chain.sh` and `generate-compose.sh` read the registry, and `init-chain.sh`
+refuses to start without being told rather than holding a third opinion.
+
+Both suites report the cadence they measured before they start waiting, and name the
+command when it is slower than the test cadence:
+
+```
+[cadence] ~6.0s per block
+[cadence] slower than the test cadence (1s), so this run will take
+[cadence] proportionally longer. To restart the devnet at the test cadence:
+[cadence]   TIMEFLARE_BLOCK_TIME=1s make dev-reset
+```
+
+It compares what it measured, not whether `TIMEFLARE_BLOCK_TIME` is set in the
+current shell — the cadence belongs to whoever started the chain, which may have
+been another session. It never fails a run.
 
 ## Consuming it
 

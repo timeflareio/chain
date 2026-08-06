@@ -87,6 +87,9 @@ SDK_DIR="${SDK_DIR:-.devnet/sdk}"
 GUARDIAN_HEALTH_TIMEOUT="${GUARDIAN_HEALTH_TIMEOUT:-180}"
 
 RPC="${CHAIN_RPC:-http://localhost:26657}"
+# shellcheck source=lib/common-utils.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common-utils.sh"
+
 DEVNET_DIR=".devnet"
 SCENARIO_DIR="$DEVNET_DIR/scenarios"
 # TIMEFLARE_HOME redirects the user keyring so the suite drives the native
@@ -464,6 +467,9 @@ if [ "$GUARDIAN_CONTROL" = "native" ]; then
     cv=$(guardianctl version 2>/dev/null | awk '/^Version:/{print $2}')
     info "guardiand: $(command -v guardiand) ($dv)"
     info "guardianctl: $(command -v guardianctl) ($cv)"
+
+    # Says which cadence this run is about to wait on, and how to change it.
+    cadence_note "$RPC"
     # They share a config schema, so a mismatched pair is a real hazard rather than
     # untidiness — one writes a file the other cannot read.
     if [ "$dv" != "$cv" ]; then

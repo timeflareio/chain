@@ -34,6 +34,16 @@ RED    := $(shell tput -Txterm setaf 1)
 WHITE  := $(shell tput -Txterm bold)$(shell tput -Txterm setaf 7)
 RESET  := $(shell tput -Txterm sgr0)
 
+# The cadence every test path runs at, and the only place it is written.
+#
+# The deployment cadence lives in networks.json, which is what a devnet brought
+# up for interactive work uses. Tests override it because the suites wait on
+# block-denominated deadlines: at the deployment cadence they take about six
+# times as long and cover nothing extra. A target that needs the test cadence
+# takes it from here rather than carrying its own default — see
+# docs/planning/PENDING_BLOCK_TIME_CONFIGURATION_PLAN.md.
+TEST_BLOCK_TIME ?= 1s
+
 # Help system configuration
 TARGET_MAX_CHAR_NUM=22
 

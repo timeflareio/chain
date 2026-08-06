@@ -42,6 +42,14 @@ problems=$(jq -r '
        | select(.chainId | test("^[a-z0-9]([a-z0-9._-]*[a-z0-9])?$"; "i") | not)
        | "\(.id): \"\(.chainId)\" is not a well-formed chain id"),
 
+      # blockTime is optional — absent means "measure it", which is what a client
+      # with a block clock already does. Present, it must be a duration that
+      # timeout_commit accepts.
+      (.networks[]
+       | select(has("blockTime"))
+       | select(.blockTime | type == "string" and test("^[0-9]+(ms|s|m)$") | not)
+       | "\(.id): blockTime \"\(.blockTime)\" is not a duration like 6s or 500ms"),
+
       # Loopback-scoped: cleartext is permitted, but only to a loopback host.
       (.networks[] | select(.local) | .id as $id | .endpoints | (.rpc[], .rest[])
        | select(test("^https?://(localhost|127\\.0\\.0\\.1|\\[::1\\])(:[0-9]+)?(/.*)?$") | not)
@@ -92,6 +100,21 @@ if [ -z "$want" ]; then
 fi
 if [ "$want" != "$got" ]; then
   echo "❌ $REGISTRY devnet chainId \"$got\" != CHAIN_ID \"$want\" in devnet/lib/common-utils.sh"
+  exit 1
+fi
+
+# No script may carry its own DEFAULT for the cadence. The registry states the
+# default and the scripts read it; a default in a script is a second answer that
+# cannot be seen from the registry, which is the fault this file exists to prevent.
+#
+# Overriding is a different thing and deliberately unrestricted: a test, a bespoke
+# devnet or an experiment sets TIMEFLARE_BLOCK_TIME to whatever it needs. This
+# checks where the default comes from, not what any run chooses.
+offenders=$(grep -rnE 'TIMEFLARE_BLOCK_TIME:-[0-9]' devnet/ 2>/dev/null || true)
+if [ -n "$offenders" ]; then
+  echo "❌ a devnet script carries its own block-time default:"
+  echo "$offenders" | sed 's/^/   /'
+  echo "   The registry states the cadence (networks.json blockTime); read it instead."
   exit 1
 fi
 

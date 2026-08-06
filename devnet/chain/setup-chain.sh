@@ -12,7 +12,15 @@ source "$SCRIPT_DIR/../lib/keyring-utils.sh"
 CHAIN_ID="${TIMEFLARE_CHAIN_ID:-timeflare-test}"
 DEFAULT_DENOM="${TIMEFLARE_DENOM:-uveil}"
 MIN_GAS_PRICE="${TIMEFLARE_MIN_GAS_PRICE:-0.1uveil}"
-BLOCK_TIME="${TIMEFLARE_BLOCK_TIME:-6s}"
+# The deployment cadence is networks.json's, not this script's: a devnet brought
+# up for interactive work runs what the registry says the network runs. Tests
+# override it (make's TEST_BLOCK_TIME); nothing here carries a default, so the two
+# cannot drift.
+BLOCK_TIME="${TIMEFLARE_BLOCK_TIME:-$(jq -r '.networks[] | select(.id == "devnet") | .blockTime' "$SCRIPT_DIR/../../networks.json")}"
+if [ -z "$BLOCK_TIME" ] || [ "$BLOCK_TIME" = "null" ]; then
+    echo "❌ networks.json has no blockTime for the devnet, and TIMEFLARE_BLOCK_TIME is unset" >&2
+    exit 1
+fi
 HOME_DIR="${TIMEFLARE_HOME:-$HOME/.timeflare}"
 
 echo "🚀 Setting up Timeflare test chain..."
