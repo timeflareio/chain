@@ -33,3 +33,8 @@ third_party/
 # Claude Code worktrees — machine-local execution checkouts, never history.
 # Deliberately narrow: .claude/settings.json, agents and skills stay committable.
 .claude/worktrees/
+
+# The devnet claim (workspace CLAUDE.md). Session state on one machine, never
+# repository content — the devnet is machine-global, so the lock says who is
+# driving it right now.
+chain.lock

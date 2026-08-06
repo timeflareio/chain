@@ -1,7 +1,0 @@
-claimed: 6 August 2026, 12:51 BST
-by: an agent session executing PENDING_BLOCK_TIME_CONFIGURATION_PLAN.md phase 5
-purpose: make e2e-full — a fresh 3-validator compose stack at the test cadence,
-         lifecycle, app-hash agreement, teardown. Proves nothing depended on the
-         2s default that phase 1 collapsed.
-note: the native timeflared running at claim time was this session's own (18h,
-      guardians already stopped); brought down to free the ports for compose
