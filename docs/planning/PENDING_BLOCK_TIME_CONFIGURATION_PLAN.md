@@ -6,11 +6,10 @@ puts a guard under the rule that time appears only at a presentation surface.
 Today the number is a literal in eleven places across two repositories, expressing
 three different values, and CI runs a 1s chain against guardians configured for 6s.*
 
-> **Status: in progress** — created and ruled 5 August 2026 (§6). Phase 1 landed
-> 6 August 2026 (chain #25). Phase 2 needs only that merge, because the guardian
-> fetches the registry from `main`; phase 3 follows phase 2; phase 4 is a comment
-> (§5); phase 5 is last, being the only phase that can send work
-> back to phase 1.
+> **Status: in progress** — created and ruled 5 August 2026 (§6). Landed 6 August
+> 2026: phase 1 (chain #25), phase 2 (guardian #15), phase 3 (chain #27) and
+> phase 4 (typescript-sdk #13). Phase 5 remains, and is the only one that can send
+> work back to phase 1.
 > **Priority**: P3 — nothing is behaviourally broken (§3), so this is
 > maintainability plus two wrong numbers in operator-facing output. It becomes P2
 > the moment anything below the surface starts converting.
