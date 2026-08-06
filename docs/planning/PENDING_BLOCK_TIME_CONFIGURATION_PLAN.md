@@ -8,8 +8,8 @@ three different values, and CI runs a 1s chain against guardians configured for 
 
 > **Status: in progress** — created and ruled 5 August 2026 (§6). Phase 1 landed
 > 6 August 2026 (chain #25). Phase 2 needs only that merge, because the guardian
-> fetches the registry from `main`; phase 3 follows phase 2; phase 4 is a ruling
-> rather than work (§5); phase 5 is last, being the only phase that can send work
+> fetches the registry from `main`; phase 3 follows phase 2; phase 4 is a comment
+> (§5); phase 5 is last, being the only phase that can send work
 > back to phase 1.
 > **Priority**: P3 — nothing is behaviourally broken (§3), so this is
 > maintainability plus two wrong numbers in operator-facing output. It becomes P2
@@ -207,19 +207,20 @@ false positives. After phase 2 the guardian has nothing to exempt. The check is
 what stops a conversion appearing in a keeper or a reveal path, where it would turn
 a cosmetic difference into a behavioural one.
 
-**Phase 4 — the SDK's seed, and whether it needs changing at all.** The SDK has no
-registry reader: the guardian fetches `networks.json` and the mobile client bundles
-a copy with the same URL as its live source, but nothing in `typescript-sdk/src`
-reads it. Sourcing the fallback from the registry therefore means giving the SDK a
-capability it does not have, which needs an argued case rather than an assumption.
+**Phase 4 — name the SDK's seed for what it is.** The constant stays hardcoded.
+`BLOCK_TIME_ESTIMATE_MS` gains a comment saying it is a cold-start seed and a
+sampling distance, not a timing guarantee, so the next reader does not mistake it
+for a value that should track a network. `ANCHOR_TARGET_BLOCKS` is unchanged.
 
-The case is weak. `blockclock.ts` measures the real cadence and uses the constant
-only when it has no measurement, and the seal path — the one conversion that
-matters — insists on a measurement rather than the seed. So the likely outcome is
-that the constant stays and gains a comment naming it a seed and a sampling
-distance rather than a timing guarantee, with `ANCHOR_TARGET_BLOCKS` unchanged.
-Confirm that before writing code, because the alternative is a new capability in
-the package that most needs to stay small.
+Nothing more, because nothing more is warranted. The seal path — the one
+conversion that matters — refuses a seeded clock and measures, since an unmeasured
+clock there commits the secret to the wrong block rather than mislabelling a date.
+A seeded clock reports `measured: false` with a 5% band, so a consumer knows it
+holds an estimate. And a seed that is too slow makes the anchor window shorter
+rather than longer, which is safer against a pruned node. The consumers that do
+know their network — the guardian and the mobile client — read `networks.json`
+directly, so the knowledge lives where it already is rather than being plumbed
+through a package whose value is staying small.
 
 **Phase 5 — prove the collapse.** The default is settled (§6.6), so what is left
 is verification rather than a decision: run the scenario suite at the test cadence
@@ -241,13 +242,19 @@ deliberately, because it is the only phase that can send work back to phase 1.
    back to *measure* cadence, not a protocol quantity, and it cannot use a
    measurement that does not exist yet. Phase 3's guard must therefore distinguish
    a measurement window from a conversion of protocol meaning.
-4. **`networks.json` carries the cadence per network**, because a per-network value
+4. **The SDK's seed stays hardcoded.** `BLOCK_TIME_ESTIMATE_MS` is a cold-start
+   value the clock replaces as soon as it measures, and the seal path refuses to use
+   it at all. The guardian and the mobile client lift the cadence from
+   `networks.json`, which is where a component that needs to know its network should
+   get it; the SDK does not gain a registry reader for a transient, self-labelled
+   estimate.
+5. **`networks.json` carries the cadence per network**, because a per-network value
    is the only honest shape — a testnet's cadence is an operational decision and
    naming one before the network exists invents a fact.
-5. **The override exists for tests and devnet runs.** It is honoured at start, on
+6. **The override exists for tests and devnet runs.** It is honoured at start, on
    the chain and on a guardian's `config init`. Hot-reloading a running chain is
    not what this solves.
-6. **Two values, two homes — and overrides free** (§1). 6s is the shipping cadence
+7. **Two values, two homes — and overrides free** (§1). 6s is the shipping cadence
    in `networks.json`, which is why it is published: a downstream learns it from the
    registry. 1s is the canonical test value in `make/common.mk`. Neither is
    enforced on a run — `TIMEFLARE_BLOCK_TIME` sets any cadence a test or a bespoke
