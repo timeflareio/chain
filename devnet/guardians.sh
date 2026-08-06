@@ -36,6 +36,41 @@ GUARDIAN_AVAILABLE_UNTIL="${GUARDIAN_AVAILABLE_UNTIL:-5256000}"
 # generated keys are encrypted-by-default with no plaintext path, so the
 # devnet's ergonomics cost is this one known passphrase)
 GUARDIAN_KEY_PASSPHRASE="${GUARDIAN_KEY_PASSPHRASE:-timeflare-devnet-share-key}"
+
+# 🚨 PUBLISHED TEST MNEMONIC — DEVNET ONLY. ANYONE CAN DERIVE THESE KEYS.
+#
+# This is the canonical BIP39 all-zeros test vector, the most widely published
+# mnemonic there is. Every guardian's signing key is derived from it at HD account
+# index N, so guardian-07 holds the same address on every run and a failure names
+# the same guardian twice. Without that, `dev-reset` wipes ~/.timeflare and each
+# run registers 24 brand-new addresses, so a ticket — SHA256(seed ‖ address) —
+# cannot repeat and a log from yesterday describes guardians that no longer exist.
+#
+# These are throwaway identities and must never be reachable from anything but a
+# devnet: assert_devnet_chain below refuses to create them against any other chain
+# ID, and that guard is the only thing standing between a convenience and a
+# published private key holding a real bond.
+GUARDIAN_MNEMONIC="${GUARDIAN_MNEMONIC:-abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about}"
+
+# Refuse to derive published keys against anything but the devnet.
+#
+# The devnet's chain ID comes from the registry rather than a literal here, so
+# there is one definition of what "the devnet" is. An unreadable registry fails
+# closed: without it there is no way to know whether this is a devnet.
+assert_devnet_chain() {
+    local devnet_id
+    devnet_id=$(jq -r '.networks[] | select(.id == "devnet") | .chainId' \
+        "$REPO_ROOT/networks.json" 2>/dev/null)
+    if [[ -z "$devnet_id" || "$devnet_id" == "null" ]]; then
+        log_error "cannot read the devnet chain ID from networks.json — refusing to derive published test keys"
+        exit 1
+    fi
+    if [[ "$CHAIN_ID" != "$devnet_id" ]]; then
+        log_error "CHAIN_ID is '$CHAIN_ID', not the devnet's '$devnet_id'."
+        log_error "These guardian keys derive from a PUBLISHED mnemonic and must never exist off the devnet."
+        exit 1
+    fi
+}
 GRPC_ENDPOINT="${GRPC_ENDPOINT:-localhost:9090}"
 # Guardian i gets health BASE_HEALTH_PORT+i, metrics BASE_METRICS_PORT+i and
 # dashboard BASE_DASHBOARD_PORT+i,
@@ -72,6 +107,11 @@ Commands:
     start [count]      Start registered guardians (default: all registered)
     stop               Stop all running guardians
     status             Show registration, process, and health status
+    park <address>...  Constrain selection to the listed guardians, by clearing
+                       accepting_secrets on every other registered guardian.
+                       Waits until the chain agrees. Restore with 'restore'.
+    restore            Return every registered guardian to accepting_secrets
+                       Idempotent — safe to call from a trap.
     logs <name>        Tail the log of a guardian (e.g. guardian-01)
     clean              Stop guardians and remove runtime state
 
@@ -158,10 +198,15 @@ prepare_one() {
     fi
     passphrase=$(cat "$passphrase_file")
 
-    # Signing key (idempotent)
+    # Signing key (idempotent), recovered from the published test mnemonic at this
+    # guardian's HD account index so the address is the same on every run. The
+    # index comes from the name in base 10, or "08" would be read as octal.
     if ! echo "$passphrase" | timeflared keys show "$name" --keyring-backend file --keyring-dir "$keyring_dir" >/dev/null 2>&1; then
-        printf '%s\n%s\n' "$passphrase" "$passphrase" | timeflared keys add "$name" \
-            --keyring-backend file --keyring-dir "$keyring_dir" --output json >/dev/null
+        assert_devnet_chain
+        local account=$((10#${name#guardian-}))
+        printf '%s\n%s\n%s\n' "$GUARDIAN_MNEMONIC" "$passphrase" "$passphrase" \
+            | timeflared keys add "$name" --recover --account "$account" \
+                --keyring-backend file --keyring-dir "$keyring_dir" --output json >/dev/null
     fi
     address=$(echo "$passphrase" | timeflared keys show "$name" -a --keyring-backend file --keyring-dir "$keyring_dir")
 
@@ -488,6 +533,96 @@ cmd_status() {
     echo "  Local registry:       $running/$total running"
 }
 
+# ── Candidate-pool parking ───────────────────────────────────────────────────
+#
+# Selection draws only from the eligibility index, and that index holds guardians
+# with accepting_secrets = true. Clearing the flag on everything outside a chosen
+# set therefore decides what the next reservation can draw, without steering
+# sortition: it still runs honestly over the candidates it is given, and pausing
+# this way is what a real guardian does to stop taking work.
+#
+# The flag is forward-only — MsgGuardianUpdate writes the guardian record and
+# touches no existing secret or assignment — so parking cannot disturb anything
+# already in flight. And selected_guardians is frozen at selection, so the
+# constraint is needed for exactly one transaction rather than for a secret's life.
+#
+# It exists for the scenario suite, which needs a named guardian to be drawn
+# rather than hoping sortition obliges. It is on-chain state that outlives the
+# caller, so the caller restores from a trap: a run that dies parked leaves every
+# later run unable to reserve anything until something restores it.
+
+# The addresses selection would currently consider.
+#
+# accepting_secrets is ABSENT rather than false once cleared — proto3 omits a bool
+# zero value — so this matches on an explicit true rather than testing for false.
+eligible_addresses() {
+    timeflared query secrets list-guardians -o json 2>/dev/null \
+      | jq -r '.guardians[]? | select((.accepting_secrets // .acceptingSecrets) == true) | .address' \
+      | sort
+}
+
+set_accepting() { # guardian-NN true|false
+    local name=$1 value=$2 config_file
+    config_file="$(guardian_home "$name")/config.yaml"
+    [[ -f "$config_file" ]] || return 0
+    guardianctl update --config-path "$config_file" \
+        --accepting-secrets="$value" --accept >/dev/null 2>&1
+}
+
+# Block until the eligible set is exactly $1 (newline-separated, sorted).
+#
+# guardianctl returns once its transaction passes CheckTx, not once it is in a
+# block, so a park that reported success is not yet a park — read the pool
+# straight afterwards and it is still the whole fleet. Waiting on chain state is
+# therefore the correctness requirement, and it doubles as the assertion a
+# reservation needs: if the pool never becomes what was asked for, the caller must
+# not go on to reserve against it.
+await_eligible() { # expected_sorted_set timeout_s
+    local want=$1 timeout=${2:-60} waited=0 got
+    while [[ "$waited" -lt "$timeout" ]]; do
+        got=$(eligible_addresses)
+        [[ "$got" == "$want" ]] && return 0
+        sleep 1
+        waited=$((waited + 1))
+    done
+    log_error "eligible pool never became the requested set within ${timeout}s"
+    { echo "  wanted:"; echo "$want" | sed 's/^/    /'
+      echo "  got:";    echo "$got"  | sed 's/^/    /'; } >&2
+    return 1
+}
+
+cmd_park() {
+    [[ $# -gt 0 ]] || { log_error "usage: $0 park <address>..."; exit 1; }
+    [[ -f "$REGISTRY_FILE" ]] || { log_error "No guardians registered"; exit 1; }
+
+    local keep=" $* " name address pids=()
+    while IFS=':' read -r name address _rest; do
+        [[ -n "$name" ]] || continue
+        case "$keep" in (*" $address "*) continue ;; esac
+        set_accepting "$name" false & pids+=($!)
+    done < "$REGISTRY_FILE"
+    local p; for p in "${pids[@]}"; do wait "$p"; done
+
+    await_eligible "$(printf '%s\n' "$@" | sort)" || exit 1
+    log_info "Candidate pool parked to $# guardian(s)"
+}
+
+cmd_restore() {
+    [[ -f "$REGISTRY_FILE" ]] || return 0
+
+    local name address pids=() all=()
+    while IFS=':' read -r name address _rest; do
+        [[ -n "$name" ]] || continue
+        all+=("$address")
+        set_accepting "$name" true & pids+=($!)
+    done < "$REGISTRY_FILE"
+    local p; for p in "${pids[@]}"; do wait "$p"; done
+
+    [[ ${#all[@]} -gt 0 ]] || return 0
+    await_eligible "$(printf '%s\n' "${all[@]}" | sort)" 90 || exit 1
+    log_info "Candidate pool restored to ${#all[@]} guardian(s)"
+}
+
 cmd_logs() {
     local name="${1:?usage: $0 logs <guardian-name>}"
     local log_file="$RUNTIME_DIR/$name/guardian.log"
@@ -507,6 +642,8 @@ case "${1:-}" in
     start)    shift; cmd_start "$@" ;;
     stop)     cmd_stop ;;
     status)   cmd_status ;;
+    park)     shift; cmd_park "$@" ;;
+    restore)  cmd_restore ;;
     logs)     shift; cmd_logs "$@" ;;
     clean)    cmd_clean ;;
     *)        usage ;;
