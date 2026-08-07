@@ -20,6 +20,7 @@ skipping, and the row covers the whole suite.
 
 | Chain | Wire contract | Guardian | Crypto | SDK | Mobile | Chain vectors | Primitive vectors |
 |---|---|---|---|---|---|---|---|
+| `v0.0.5` | `x/secrets/types/v0.0.4` | `v0.0.5` | `v0.0.1` Go, `v0.0.2` npm | `v0.0.7` | untagged, `sdk v0.0.7` | `chain v0.0.5` (SDK), `v0.0.4` (guardian) | `crypto v0.0.2`, two files |
 | `v0.0.4` | `x/secrets/types/v0.0.3` | `v0.0.4` | `v0.0.1` Go, `v0.0.2` npm | `v0.0.5` | untagged, `sdk v0.0.3` | `chain v0.0.3` (SDK), `v0.0.2` (guardian) | `crypto v0.0.2`, two files |
 | `v0.0.3` | `x/secrets/types/v0.0.2` | `v0.0.3` | `v0.0.1` | `v0.0.2` | untagged, `sdk v0.0.2` | `chain v0.0.3` | `crypto v0.0.1` |
 | `v0.0.1` | `x/secrets/types/v0.0.1` | `v0.0.2` | `v0.0.1` | — | — | in-repo | `crypto v0.0.1` |

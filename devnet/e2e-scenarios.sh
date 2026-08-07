@@ -959,16 +959,19 @@ M10="$SCENARIO_DIR/s10-manifest.json"
 # pinning, and the drill asserts the collection.
 #
 #   default:  the suite's usual 5-wide zero-width band, ~4 minutes
-#   drill:    band 7:9 at bump 10× over ~1,020 blocks — the cheapest shape whose
-#             30% clears the floor for EVERY allowed activation outcome
-#             (7 revealers → 52,740 uveil, 9 → 59,940), ~18 minutes
+#   drill:    band 7:9 at bump 10× at an offset of 900 — the reveal window is
+#             derived from that offset (222 blocks), giving a priced distance of
+#             ~1,073 blocks, whose 30% clears the floor for EVERY allowed
+#             activation outcome. The offset carries the whole shape now: it is
+#             the only timing input, so buying a longer hold is the only way to
+#             buy a bigger pool.
 #
 # Set REBATE_COLLECTION_DRILL=1 to run the drill. A wide ZERO-WIDTH band is not
 # the shortcut it looks like: all its guardians must accept before the deadline,
 # and this suite has already killed one daemon (S1) and slashed another (S3).
 if [ "${REBATE_COLLECTION_DRILL:-0}" = "1" ]; then
-    info "S10 running the collection drill — a ~1,020-block secret, this takes a while"
-    S10=$(create_secret "$M10" 150 1000 7:9)
+    info "S10 running the collection drill — a ~1,073-block secret, this takes a while"
+    S10=$(create_secret "$M10" 900 1000 7:9)
 else
     S10=$(create_secret "$M10" 100 100)
 fi
