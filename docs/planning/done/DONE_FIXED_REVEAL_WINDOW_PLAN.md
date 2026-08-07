@@ -6,9 +6,31 @@ governs how much is needed is how long the guardian has been silent since it las
 proved it was alive — a quantity the protocol knows exactly and the creator does
 not. Remove the field and derive the window on chain.*
 
-> **Status: ready — 7 August 2026.** No open questions: the calibration, the
-> interior shape, the storage decision and the message shape are all ruled below.
-> Executable on the owner's go-ahead, in a worktree forked from `main`.
+> **Status: done — 7 August 2026.** Executed on `fixed-reveal-window`, merged as
+> [PR #29](https://github.com/timeflareio/chain/pull/29). The full release train
+> ran: chain `v0.0.5` + `x/secrets/types/v0.0.4`, guardian `v0.0.5`, SDK `v0.0.6`
+> then `v0.0.7`, mobile merged, devnet pins moved, and both suites green against
+> those artefacts (`e2e` full lifecycle; `e2e-scenarios` 74 assertions, 0 failed).
+> `COMPATIBILITY.md` carries the row.
+>
+> **Three things the execution found that §6 had not listed:**
+>
+> 1. **The SDK's `examples/` are wire-facing.** They drive the chain's e2e
+>    harness, so `v0.0.6` shipped `src/` correctly and still broke the harness;
+>    `v0.0.7` fixed them. `scenario-create.js` took the reveal duration as a
+>    *positional* argument, so removing it shifted `bump` and `shares` — the
+>    devnet's `create_secret` helper and its seven call sites had to move in the
+>    same change.
+> 2. **`make sdk-sync` is version-blind** (`make/devnet.mk:100`): it short-circuits
+>    when `.devnet/sdk/examples` and `node_modules` exist and never compares
+>    `SDK_VERSION`, so moving the pin cannot force a re-fetch. The harness silently
+>    kept running the old SDK and reported success — exactly the failure mode
+>    `PROTOCOL_CHANGE.md` describes, but in the target rather than the operator.
+>    Worked around with `rm -rf .devnet/sdk`; it wants a real fix.
+> 3. **`mobile-client` has two SDK pins**, not one: `app/package.json` and
+>    `e2e/package.json`, which had drifted to different versions.
+>
+> Neither 2 nor 3 is in this plan's scope; both are worth their own change.
 >
 > **Priority**: P2 — protocol surface, pre-testnet. Removing a wire field is
 > cheap now and expensive once integrators have pinned it.
