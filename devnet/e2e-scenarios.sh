@@ -433,8 +433,8 @@ guardian_healthy() { # guardian-NN
     fi
 }
 
-create_secret() { # manifest offset duration bump [min:max shares]
-    node ${SDK_DIR}/examples/scenario-create.js "$1" "$2" "$3" "$4" ${5:+"$5"} >/dev/null
+create_secret() { # manifest offset bump [min:max shares]
+    node ${SDK_DIR}/examples/scenario-create.js "$1" "$2" "$3" ${4:+"$4"} >/dev/null
     jq -r '.secretId' "$1"
 }
 
@@ -529,7 +529,7 @@ POOL_START=$(community_pool_total)
 info "S1: no-show slash — a healthy daemon is killed after acceptance"
 # ─────────────────────────────────────────────────────────────────────────────
 M1="$SCENARIO_DIR/s1-manifest.json"
-S1=$(create_secret "$M1" 100 100 100)
+S1=$(create_secret "$M1" 100 100)
 info "S1 secret: $S1 — waiting for guardian acceptance"
 wait_state "$S1" pending
 
@@ -575,7 +575,7 @@ guardians_restart "$VDIR"
 info "S2: mid-hold cancellation — pro-rata wages + creator remainder"
 # ─────────────────────────────────────────────────────────────────────────────
 M2="$SCENARIO_DIR/s2-manifest.json"
-S2=$(create_secret "$M2" 150 100 100)
+S2=$(create_secret "$M2" 150 100)
 info "S2 secret: $S2 — waiting for guardian acceptance"
 wait_state "$S2" pending
 
@@ -619,7 +619,7 @@ ok "S2 every bond released"
 info "S3: early-reveal report — creator-as-reporter with real share evidence"
 # ─────────────────────────────────────────────────────────────────────────────
 M3="$SCENARIO_DIR/s3-manifest.json"
-S3=$(create_secret "$M3" 100 100 100)
+S3=$(create_secret "$M3" 100 100)
 info "S3 secret: $S3 — waiting for guardian acceptance"
 wait_state "$S3" pending
 
@@ -831,7 +831,7 @@ info "S8: key rotation — forward-only mid-life rotation, both epochs served"
 # then rotates, restarts, and must still serve A with the retired key while a
 # post-rotation secret B is served with the new key.
 M8A="$SCENARIO_DIR/s8a-manifest.json"
-S8A=$(create_secret "$M8A" 200 100 100)
+S8A=$(create_secret "$M8A" 200 100)
 info "S8 secret A (pre-rotation): $S8A — waiting for guardian acceptance"
 wait_state "$S8A" pending
 
@@ -889,7 +889,7 @@ A_SET=$(secret_json "$S8A" | jq -r '.secret.selected_guardians[]')
 info "S8 constraining the candidate pool to A's five for B's reservation"
 guardian_park $A_SET || fatal "S8 could not constrain the candidate pool to A's set"
 M8B="$SCENARIO_DIR/s8b-manifest.json"
-S8B=$(create_secret "$M8B" 100 100 100)
+S8B=$(create_secret "$M8B" 100 100)
 guardian_restore || fatal "S8 could not restore the fleet after B's reservation"
 secret_json "$S8B" | jq -e --arg g "$ROTATOR" \
     '.secret.selected_guardians | index($g)' >/dev/null \
@@ -968,9 +968,9 @@ M10="$SCENARIO_DIR/s10-manifest.json"
 # and this suite has already killed one daemon (S1) and slashed another (S3).
 if [ "${REBATE_COLLECTION_DRILL:-0}" = "1" ]; then
     info "S10 running the collection drill — a ~1,020-block secret, this takes a while"
-    S10=$(create_secret "$M10" 150 900 1000 7:9)
+    S10=$(create_secret "$M10" 150 1000 7:9)
 else
-    S10=$(create_secret "$M10" 100 100 100)
+    S10=$(create_secret "$M10" 100 100)
 fi
 [ -n "$S10" ] || fatal "S10 secret creation failed — see the scenario-create output above"
 info "S10 secret: $S10 — waiting for guardian acceptance"
