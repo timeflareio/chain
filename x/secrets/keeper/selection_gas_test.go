@@ -94,16 +94,13 @@ func measurePhase1Gas(t *testing.T, prefix string, n int, band int64) uint64 {
 
 func phase1Request(creator sdk.AccAddress, band int64) *types.MsgUserRequestGuardians {
 	return &types.MsgUserRequestGuardians{
-		Creator:       creator.String(),
-		DetectionHint: testDetectionHint(),
-		Threshold:     3,
-		MinShares:     band,
-		MaxShares:     band,
-		RevealWindow: &types.RevealWindow{
-			StartOffset: 400,
-			Duration:    testRevealDuration,
-		},
-		Bump: types.MinBump,
+		Creator:           creator.String(),
+		DetectionHint:     testDetectionHint(),
+		Threshold:         3,
+		MinShares:         band,
+		MaxShares:         band,
+		RevealStartOffset: 400,
+		Bump:              types.MinBump,
 	}
 }
 

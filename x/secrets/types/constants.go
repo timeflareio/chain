@@ -96,13 +96,11 @@ const (
 	// beyond the availability cap requires guardian handoff/bond-transfer
 	// mechanics. See docs/spec.md "Timing Constraints".
 	MaxRevealHorizon = int64(MaxAvailabilityWindow)
-	// MaxRevealStartOffset is the maximum blocks from current to reveal start.
-	// Bounded by the reveal horizon: an offset beyond H cannot yield a valid window.
-	MaxRevealStartOffset = MaxRevealHorizon
-	// MinRevealDuration is the minimum reveal window duration (10 minutes)
-	MinRevealDuration = int64(100)
-	// MaxRevealDuration is the maximum reveal window duration (1 day)
-	MaxRevealDuration = int64(14_400)
+	// MaxRevealStartOffset is the maximum blocks from creation to reveal start.
+	// Bounded by the reveal horizon, which covers reveal_end_block and therefore
+	// the derived window too: the latest legal opening is H minus the longest
+	// window the derivation can return, so a secret's whole life fits inside H.
+	MaxRevealStartOffset = MaxRevealHorizon - RevealWindowCeiling
 	// NOTE: MinCancelBlocks removed — cancellation is permitted at any point
 	// before reveal_start_block (pro-rata guardian pay makes late cancellation
 	// non-abusive). NOTE: Min/MaxRewardAmount removed — the reward pool is
@@ -123,6 +121,31 @@ const (
 	// the commit window plus MinRevealStartOffset. A constant rather than a
 	// computation, because the commit window no longer varies.
 	MinRevealStartOffsetTotal = CommitTimeoutBlocks + MinRevealStartOffset
+)
+
+// Reveal window derivation (assuming ~6 second block time).
+//
+// The window is a retry budget, sized by how long the guardian has been
+// unobserved. Its last proof of life is its acceptance at commit_deadline, and
+// nothing obliges it to transact again before revealing, so the hold
+// (reveal_start_block − commit_deadline) is exactly the interval over which its
+// health is unknown. Breakage arriving at a roughly constant rate makes the
+// probability of being broken at window-open rise fastest early and then
+// saturate, which is why the ramp is concave. See docs/spec.md "The Reveal
+// Window".
+const (
+	// RevealWindowFloor is the shortest derived window (~5 minutes), applying to
+	// every hold up to RevealRampStart. A guardian that accepted this recently
+	// has just been observed transacting and needs the least cushion.
+	RevealWindowFloor = int64(50)
+	// RevealWindowCeiling is the longest derived window (~12 hours), applying from
+	// RevealRampEnd to the horizon — long enough to cover an incident that starts
+	// outside working hours and is picked up the next morning.
+	RevealWindowCeiling = int64(7_200)
+	// RevealRampStart is the hold up to which the floor applies (~1 hour).
+	RevealRampStart = int64(600)
+	// RevealRampEnd is the hold from which the ceiling applies (~30 days).
+	RevealRampEnd = int64(432_000)
 )
 
 // Event attribute keys for consistent event structure

@@ -115,16 +115,13 @@ func TestUserRequestGuardians_RejectsSmallOrderDetectionHint(t *testing.T) {
 		hint.EphemeralPub = key
 
 		_, err := msgServer.UserRequestGuardians(f.ctx, &types.MsgUserRequestGuardians{
-			Creator:       creator.String(),
-			DetectionHint: hint,
-			Threshold:     3,
-			MinShares:     15,
-			MaxShares:     17,
-			RevealWindow: &types.RevealWindow{
-				StartOffset: types.MinRevealStartOffsetTotal,
-				Duration:    testRevealDuration,
-			},
-			Bump: types.MinBump,
+			Creator:           creator.String(),
+			DetectionHint:     hint,
+			Threshold:         3,
+			MinShares:         15,
+			MaxShares:         17,
+			RevealStartOffset: types.MinRevealStartOffsetTotal,
+			Bump:              types.MinBump,
 		})
 		require.Error(t, err, "small-order hint key %d would match every recipient", i)
 		require.Contains(t, err.Error(), "detection hint ephemeral key is not a usable X25519 public key")

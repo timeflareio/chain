@@ -24,11 +24,8 @@ func (msg *MsgUserRequestGuardians) ValidateBasic() error {
 		return err
 	}
 
-	// Validate reveal window
-	if msg.RevealWindow == nil {
-		return errorsmod.Wrap(ErrInvalidRequest, "reveal window is required")
-	}
-	if err := validateRevealWindow(msg.RevealWindow); err != nil {
+	// Validate the reveal start offset (the window's length follows from it)
+	if err := validateRevealStartOffset(msg.RevealStartOffset); err != nil {
 		return err
 	}
 
@@ -46,25 +43,21 @@ func (msg *MsgUserRequestGuardians) ValidateBasic() error {
 	return nil
 }
 
-// validateRevealWindow validates the reveal window configuration
-func validateRevealWindow(window *RevealWindow) error {
+// validateRevealStartOffset validates the only timing value on the wire. The
+// window's length is derived from it, so there is nothing else to check: every
+// offset in range yields a window that is legal by construction.
+func validateRevealStartOffset(startOffset int64) error {
 	// The floor is the fixed commit window plus the activation buffer. With the
 	// commit window a constant this is fully checkable here, so the stateless
 	// and keeper layers agree on it rather than the keeper being stricter.
-	if window.StartOffset < MinRevealStartOffsetTotal {
-		return errorsmod.Wrapf(ErrInvalidRequest, "reveal start offset too small, minimum %d blocks, got %d", MinRevealStartOffsetTotal, window.StartOffset)
+	if startOffset < MinRevealStartOffsetTotal {
+		return errorsmod.Wrapf(ErrInvalidRequest, "reveal start offset too small, minimum %d blocks, got %d", MinRevealStartOffsetTotal, startOffset)
 	}
 
-	if window.StartOffset > MaxRevealStartOffset {
-		return errorsmod.Wrapf(ErrInvalidRequest, "reveal start offset too large, maximum %d blocks, got %d", MaxRevealStartOffset, window.StartOffset)
-	}
-
-	if window.Duration < MinRevealDuration {
-		return errorsmod.Wrapf(ErrInvalidRequest, "reveal window duration too short, minimum %d blocks, got %d", MinRevealDuration, window.Duration)
-	}
-
-	if window.Duration > MaxRevealDuration {
-		return errorsmod.Wrapf(ErrInvalidRequest, "reveal window duration too long, maximum %d blocks, got %d", MaxRevealDuration, window.Duration)
+	// The ceiling already carries the longest window the derivation can return,
+	// so an offset in range can never push reveal_end_block past the horizon.
+	if startOffset > MaxRevealStartOffset {
+		return errorsmod.Wrapf(ErrInvalidRequest, "reveal start offset too large, maximum %d blocks, got %d", MaxRevealStartOffset, startOffset)
 	}
 
 	return nil

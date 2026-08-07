@@ -331,16 +331,13 @@ func createTestSecret(t *testing.T, f *fixture, msgServer types.MsgServer) strin
 	creator := sdk.AccAddress([]byte("creator_address"))
 
 	msg := &types.MsgUserRequestGuardians{
-		Creator:       creator.String(),
-		DetectionHint: testDetectionHint(),
-		Threshold:     3,
-		MinShares:     15,
-		MaxShares:     15,
-		RevealWindow: &types.RevealWindow{
-			StartOffset: 400,
-			Duration:    testRevealDuration,
-		},
-		Bump: types.MinBump,
+		Creator:           creator.String(),
+		DetectionHint:     testDetectionHint(),
+		Threshold:         3,
+		MinShares:         15,
+		MaxShares:         15,
+		RevealStartOffset: 400,
+		Bump:              types.MinBump,
 	}
 
 	resp, err := msgServer.UserRequestGuardians(f.ctx, msg)

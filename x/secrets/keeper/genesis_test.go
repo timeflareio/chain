@@ -214,7 +214,7 @@ func TestGenesis_RoundTripEquality(t *testing.T) {
 		registerConformanceGuardian(t, f, srv, fmt.Sprintf("genesis_b_g%02d", i), testFloatUnit())
 	}
 	setHeight(f, height(f)+1)
-	secretBId, err := requestConformanceSecret(t, f, srv, types.MinBump, 2, 3, 3, 400, testRevealDuration)
+	secretBId, err := requestConformanceSecret(t, f, srv, types.MinBump, 2, 3, 3, 400)
 	require.NoError(t, err)
 	secretB, err := f.keeper.GetSecret(f.ctx, secretBId)
 	require.NoError(t, err)
@@ -235,13 +235,13 @@ func TestGenesis_RoundTripEquality(t *testing.T) {
 	// Secret C: Phase 1 only (reserved — no payload yet)
 	creator := sdk.AccAddress([]byte("creator_address")).String()
 	_, err = srv.UserRequestGuardians(f.ctx, &types.MsgUserRequestGuardians{
-		Creator:       creator,
-		DetectionHint: testDetectionHint(),
-		Threshold:     2,
-		MinShares:     3,
-		MaxShares:     3,
-		RevealWindow:  &types.RevealWindow{StartOffset: 400, Duration: testRevealDuration},
-		Bump:          types.MinBump,
+		Creator:           creator,
+		DetectionHint:     testDetectionHint(),
+		Threshold:         2,
+		MinShares:         3,
+		MaxShares:         3,
+		RevealStartOffset: 400,
+		Bump:              types.MinBump,
 	})
 	require.NoError(t, err)
 

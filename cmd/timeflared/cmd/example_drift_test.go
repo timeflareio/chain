@@ -209,16 +209,15 @@ func checkRequestGuardiansExample(t *testing.T, source, display string, position
 		}
 		args = args[1:] // drop the hint token (placeholder or hex)
 	}
-	// threshold, min-shares, max-shares, bump, reveal-start-offset,
-	// reveal-duration: the CLI rejects a missing duration, so a runnable
-	// example carries all six.
-	if len(args) != 6 {
-		t.Errorf("%s: %q has %d band/timing arguments; a runnable example needs 6 "+
-			"(threshold min-shares max-shares bump reveal-start-offset reveal-duration)",
+	// threshold, min-shares, max-shares, bump, reveal-start-offset: the window's
+	// length is derived from the offset, so a runnable example carries five.
+	if len(args) != 5 {
+		t.Errorf("%s: %q has %d band/timing arguments; a runnable example needs 5 "+
+			"(threshold min-shares max-shares bump reveal-start-offset)",
 			source, display, len(args))
 		return
 	}
-	nums := make([]int64, 6)
+	nums := make([]int64, 5)
 	for j, a := range args {
 		n, err := strconv.ParseInt(a, 10, 64)
 		if err != nil {
@@ -238,14 +237,11 @@ func checkRequestGuardiansExample(t *testing.T, source, display string, position
 			EphemeralPub: ephemeral,
 			Tag:          bytes.Repeat([]byte{0x01}, 8),
 		},
-		Threshold: nums[0],
-		MinShares: nums[1],
-		MaxShares: nums[2],
-		Bump:      nums[3],
-		RevealWindow: &types.RevealWindow{
-			StartOffset: nums[4],
-			Duration:    nums[5],
-		},
+		Threshold:         nums[0],
+		MinShares:         nums[1],
+		MaxShares:         nums[2],
+		Bump:              nums[3],
+		RevealStartOffset: nums[4],
 	}
 	if err := msg.ValidateBasic(); err != nil {
 		t.Errorf("%s: %q constructs a message the chain rejects: %v", source, display, err)

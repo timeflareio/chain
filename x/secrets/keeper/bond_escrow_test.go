@@ -46,16 +46,13 @@ func setupBondTestSecret(t *testing.T, f *fixture, msgServer types.MsgServer, bu
 
 	creator := sdk.AccAddress([]byte("creator_address"))
 	reqMsg := &types.MsgUserRequestGuardians{
-		Creator:       creator.String(),
-		DetectionHint: testDetectionHint(),
-		Threshold:     threshold,
-		MinShares:     shares,
-		MaxShares:     shares,
-		RevealWindow: &types.RevealWindow{
-			StartOffset: 400,
-			Duration:    testRevealDuration,
-		},
-		Bump: bump,
+		Creator:           creator.String(),
+		DetectionHint:     testDetectionHint(),
+		Threshold:         threshold,
+		MinShares:         shares,
+		MaxShares:         shares,
+		RevealStartOffset: 400,
+		Bump:              bump,
 	}
 	resp, err := msgServer.UserRequestGuardians(f.ctx, reqMsg)
 	require.NoError(t, err)

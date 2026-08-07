@@ -55,7 +55,7 @@ func (ms msgServer) UserRequestGuardians(ctx context.Context, msg *types.MsgUser
 	}
 
 	// Step 4: Validate reveal window timing
-	if err := ms.validateRevealWindow(msg.RevealWindow); err != nil {
+	if err := ms.validateRevealStartOffset(msg.RevealStartOffset); err != nil {
 		return nil, errorsmod.Wrapf(types.ErrInvalidRevealBlock, "invalid reveal window: %s", err)
 	}
 
@@ -65,9 +65,12 @@ func (ms msgServer) UserRequestGuardians(ctx context.Context, msg *types.MsgUser
 		return nil, err
 	}
 
-	// Step 6: Calculate reveal timing before guardian selection
-	revealStartBlock := sdkCtx.BlockHeight() + msg.RevealWindow.StartOffset
-	revealEndBlock := revealStartBlock + msg.RevealWindow.Duration
+	// Step 6: Calculate reveal timing before guardian selection. The window's
+	// length is derived from the hold the offset implies, not chosen — both
+	// heights are absolute from here on, stored on the record and never
+	// recomputed (docs/spec.md "The Reveal Window").
+	revealStartBlock := sdkCtx.BlockHeight() + msg.RevealStartOffset
+	revealEndBlock := revealStartBlock + types.RevealWindowForStartOffset(msg.RevealStartOffset)
 	commitDeadline := sdkCtx.BlockHeight() + types.CommitTimeoutBlocks
 
 	// Step 7: Derive the economics for this secret — the reward pool is priced
@@ -297,37 +300,25 @@ func (ms msgServer) prepareGuardianInfoResponse(ctx context.Context, selectedGua
 	return guardianInfos, nil
 }
 
-// validateRevealWindow validates the reveal window timing (start_offset and duration)
-func (ms msgServer) validateRevealWindow(window *types.RevealWindow) error {
+// validateRevealStartOffset validates the reveal timing. The offset is the only
+// timing value the creator supplies; the window's length is derived from it, so
+// the reveal horizon reduces to a bound on the offset alone.
+func (ms msgServer) validateRevealStartOffset(startOffset int64) error {
 	// The floor is a constant: the fixed commit window plus the reveal buffer.
-	if window.StartOffset < types.MinRevealStartOffsetTotal {
+	if startOffset < types.MinRevealStartOffsetTotal {
 		return fmt.Errorf("reveal start offset too small: %d blocks (minimum %d blocks = %d commit + %d buffer)",
-			window.StartOffset, types.MinRevealStartOffsetTotal, types.CommitTimeoutBlocks, types.MinRevealStartOffset)
-	}
-	if window.StartOffset > types.MaxRevealStartOffset {
-		return fmt.Errorf("reveal start offset too large: %d blocks (maximum %d blocks / %d days)",
-			window.StartOffset, types.MaxRevealStartOffset, types.MaxRevealStartOffset/14400)
+			startOffset, types.MinRevealStartOffsetTotal, types.CommitTimeoutBlocks, types.MinRevealStartOffset)
 	}
 
-	// Validate duration
-	if window.Duration < types.MinRevealDuration {
-		return fmt.Errorf("reveal duration too short: %d blocks (minimum %d blocks / %d minutes)",
-			window.Duration, types.MinRevealDuration, types.MinRevealDuration/10)
-	}
-	if window.Duration > types.MaxRevealDuration {
-		return fmt.Errorf("reveal duration too long: %d blocks (maximum %d blocks / %d hours)",
-			window.Duration, types.MaxRevealDuration, types.MaxRevealDuration/600)
-	}
-
-	// Validate the reveal horizon (H): reveal_end_block must lie within H blocks
-	// of creation. H equals MaxAvailabilityWindow, so any window passing this check
-	// can be covered by a freshly registered guardian. The priced distance
-	// (commit_deadline -> settlement) is bounded as a consequence:
-	// distance ≤ H + 1 − CommitTimeoutBlocks. See docs/spec.md "Timing Constraints".
-	horizon := window.StartOffset + window.Duration
-	if horizon > types.MaxRevealHorizon {
-		return fmt.Errorf("reveal window ends too far in the future: %d blocks from now (maximum %d blocks / ~1 year, the guardian availability cap)",
-			horizon, types.MaxRevealHorizon)
+	// The ceiling is H less the longest window the derivation can return, so
+	// reveal_end_block lands inside the horizon for every offset that passes.
+	// H equals MaxAvailabilityWindow, meaning any such window can be covered by a
+	// freshly registered guardian, and the priced distance (commit_deadline ->
+	// settlement) is bounded as a consequence: distance ≤ H + 1 −
+	// CommitTimeoutBlocks. See docs/spec.md "Timing Constraints".
+	if startOffset > types.MaxRevealStartOffset {
+		return fmt.Errorf("reveal start offset too large: %d blocks (maximum %d blocks, which is the ~1 year guardian availability cap less the longest reveal window)",
+			startOffset, types.MaxRevealStartOffset)
 	}
 
 	return nil

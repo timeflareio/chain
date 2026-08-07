@@ -182,9 +182,8 @@ func fuzzOneRun(t *testing.T, seed, blocks int64, p fuzzProfile) {
 			threshold := int64(2)
 			nShares := int64(2 + rng.Intn(3)) // 2–4
 			startOffset := types.MinRevealStartOffsetTotal + int64(rng.Intn(30))
-			duration := types.MinRevealDuration + int64(rng.Intn(50))
 
-			secretId, err := fuzzCreateSecret(t, f, msgServer, creator, bump, threshold, nShares, startOffset, duration, shares)
+			secretId, err := fuzzCreateSecret(t, f, msgServer, creator, bump, threshold, nShares, startOffset, shares)
 			step("create", err)
 			_ = secretId
 		}
@@ -288,16 +287,16 @@ func fuzzOneRun(t *testing.T, seed, blocks int64, p fuzzProfile) {
 
 // fuzzCreateSecret drives Phases 1+2, recording each guardian's plaintext
 // share for later reveals and leak evidence.
-func fuzzCreateSecret(t *testing.T, f *fixture, msgServer types.MsgServer, creator string, bump, threshold, nShares, startOffset, duration int64, shares map[string]map[string][]byte) (string, error) {
+func fuzzCreateSecret(t *testing.T, f *fixture, msgServer types.MsgServer, creator string, bump, threshold, nShares, startOffset int64, shares map[string]map[string][]byte) (string, error) {
 	t.Helper()
 	resp, err := msgServer.UserRequestGuardians(f.ctx, &types.MsgUserRequestGuardians{
-		Creator:       creator,
-		DetectionHint: testDetectionHint(),
-		Threshold:     threshold,
-		MinShares:     nShares,
-		MaxShares:     nShares,
-		RevealWindow:  &types.RevealWindow{StartOffset: startOffset, Duration: duration},
-		Bump:          bump,
+		Creator:           creator,
+		DetectionHint:     testDetectionHint(),
+		Threshold:         threshold,
+		MinShares:         nShares,
+		MaxShares:         nShares,
+		RevealStartOffset: startOffset,
+		Bump:              bump,
 	})
 	if err != nil {
 		return "", err

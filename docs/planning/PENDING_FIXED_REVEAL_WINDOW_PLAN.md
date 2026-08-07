@@ -486,6 +486,16 @@ Spec first, per the spec-first rule — this changes protocol behaviour.
 
 ## 7. Plans this collides with
 
+- [PENDING_E2E_SCENARIO_DETERMINISM_PLAN.md](PENDING_E2E_SCENARIO_DETERMINISM_PLAN.md)
+  — its §4 constants table lists `MinRevealDuration` and `MaxRevealDuration`, and
+  its shrink analysis concludes "**duration**: no scope. Already at
+  `MinRevealDuration`". Both statements are retired by this change, and the
+  conclusion moves in that plan's favour: at the offset floor of 100 the derived
+  window is 50 blocks, half the old minimum, so every scenario it measures gets
+  *shorter* rather than longer. **Not edited here** — it is being executed on the
+  `e2e-scenario-determinism` branch, so touching it from this worktree would
+  collide. Whichever lands second re-measures against the other.
+
 - [PENDING_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](../../../mobile-client/docs/planning/PENDING_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)
   — §7 Q2 rules the wizard's `revealDuration` Advanced dial and its 300-block
   default, and its §2 pricing table teaches the wizard to include the window span

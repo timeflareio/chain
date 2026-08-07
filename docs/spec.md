@@ -22,6 +22,7 @@
    - [👤 Share Distribution (Phase 2)](#-share-distribution-phase-2)
    - [👮 Guardian Acceptance (Phase 3)](#-guardian-acceptance-phase-3)
    - [👤 Secret Cancellation](#-secret-cancellation)
+   - [The Reveal Window (normative)](#the-reveal-window-normative)
    - [👮 Guardian Reveal Stage](#-guardian-reveal-stage)
    - [Window Closure & Reward Distribution](#window-closure--reward-distribution)
 3. [Secret Economics & Slashing](#secret-economics--slashing)
@@ -356,7 +357,7 @@ Secret creation begins when users need to time-lock information for future revel
 type MsgUserRequestGuardians struct {
     Creator              string                    // Secret creator's address (transaction signer)
     DetectionHint        DetectionHint             // Per-secret recipient discovery hint (see Recipient Discovery); the recipient's key is never submitted
-    RevealWindow         RevealWindow              // When and how shares should be revealed
+    RevealStartOffset    int64                     // Blocks from the creation height to reveal_start_block; the window length is derived from it
     Threshold            int64                     // Minimum shares needed for reconstruction (2-16)
     MinShares            int64                     // Minimum guardian acceptances for the secret to proceed (threshold ≤ min)
     MaxShares            int64                     // Guardian candidates selected and shares distributed (min ≤ max ≤ 32, max − min < threshold)
@@ -390,7 +391,7 @@ Selection is fully protocol-controlled — the creator supplies **no selection i
 **The reward pool** `P = rate × distance × max_shares × bump` is computed by the protocol — the creator does not choose an amount — and is immediately locked in escrow, distributed only at settlement or cancellation. The pool is priced on `max_shares` and **fixed**: there is no activation-time refund of unfilled slots — fewer acceptances simply mean a larger per-guardian payout for the same creator cost. See [Secret Economics & Slashing](#secret-economics--slashing).
 
 #### Timing Constraints
-**Reveal windows** must start in the future and end within the reveal horizon: `reveal_end_block` cannot lie more than `H = 5,256,000` blocks (≈ 1 year) after the creation block. `H` deliberately equals the maximum guardian availability window, so every secret that passes validation can be covered by a freshly registered guardian — validation never promises a window that selection cannot staff. Longer-lived reveals are achieved by cancel-and-recreate cycles (the paid pro-rata cancellation makes this a first-class pattern, e.g. a dead-man's handle) — and this is permanent, not an interim gap: guardian handoff/bond-transfer was **ruled off the table** (July 2026) because any transfer mechanism is unsound under possession-based slashing evidence (see [Common Attack Vectors](#common-attack-vectors--mitigations), "Share Ownership Transfer"). **Commit timeout** is a protocol constant, not a creator choice: every secret gets `CommitTimeoutBlocks = 50` blocks (≈ 5 minutes at the production 6s cadence) to complete the entire 3-phase commitment process, after which it activates or fails automatically. The term is denominated in blocks, so its wall-clock length follows the chain's actual cadence. **Selection finality** means guardian assignments cannot be changed once committed to blockchain state.
+**Reveal windows** must start in the future and end within the reveal horizon: `reveal_end_block` cannot lie more than `H = 5,256,000` blocks (≈ 1 year) after the creation block. The creator supplies only `reveal_start_offset`; the window's length is derived from it (see [The Reveal Window](#the-reveal-window-normative)), so the horizon bound reduces to a bound on that one input — `reveal_start_offset ≤ H − RevealWindowCeiling = 5,248,800`. A secret's whole life, its reveal window included, therefore fits inside `H`. `H` deliberately equals the maximum guardian availability window, so every secret that passes validation can be covered by a freshly registered guardian — validation never promises a window that selection cannot staff. Longer-lived reveals are achieved by cancel-and-recreate cycles (the paid pro-rata cancellation makes this a first-class pattern, e.g. a dead-man's handle) — and this is permanent, not an interim gap: guardian handoff/bond-transfer was **ruled off the table** (July 2026) because any transfer mechanism is unsound under possession-based slashing evidence (see [Common Attack Vectors](#common-attack-vectors--mitigations), "Share Ownership Transfer"). **Commit timeout** is a protocol constant, not a creator choice: every secret gets `CommitTimeoutBlocks = 50` blocks (≈ 5 minutes at the production 6s cadence) to complete the entire 3-phase commitment process, after which it activates or fails automatically. The term is denominated in blocks, so its wall-clock length follows the chain's actual cadence. **Selection finality** means guardian assignments cannot be changed once committed to blockchain state.
 
 
 #### What Happens Next
@@ -500,6 +501,47 @@ type MsgUserCancelSecret struct {
 Cancelled secrets transition to permanent `cancelled` state and cannot be reactivated. All guardian assignments are marked as cancelled, and appropriate refunds are processed immediately. The protocol emits cancellation events for transparency and audit purposes.
 
 > **📋 For detailed field specifications, validation rules, examples, and technical implementation details, see [MsgUserCancelSecret in operations.md](operations.md#msgcancelsecret).**
+
+### The Reveal Window (normative)
+
+The window's length is **derived by the protocol, never chosen by the creator**. It is a retry budget: `guardiand` reveals as soon as the window opens and retries until it closes, so what the window has to absorb is a guardian being temporarily unable to transact. How much is needed follows how long that guardian has been unobserved.
+
+A guardian's last proof of life is its acceptance, which lands by `commit_deadline`. There is no heartbeat — between `MsgGuardianConfirmShares` and its reveal a guardian is silent on chain — so the interval over which its health is unknown is exactly
+
+```
+hold = reveal_start_block − commit_deadline = reveal_start_offset − CommitTimeoutBlocks
+```
+
+The window is a clamped concave function of that interval:
+
+```
+RevealWindowFloor   = 50        RevealRampStart = 600      // 5 min, 1 hour at 6s
+RevealWindowCeiling = 7200      RevealRampEnd   = 432000   // 12 h, 30 days at 6s
+rise = RevealWindowCeiling − RevealWindowFloor   (7,150)
+span = RevealRampEnd − RevealRampStart           (431,400)
+
+hold ≤ RevealRampStart  →  RevealWindowFloor
+hold ≥ RevealRampEnd    →  RevealWindowCeiling
+otherwise               →  RevealWindowFloor + isqrt((hold − RevealRampStart) × rise² ÷ span)
+```
+
+`isqrt` is truncating integer square root. The form is **normative in exactly this integer shape** — multiplication before division, truncating throughout — and lives in `x/secrets/types` so chain, tests and tooling call the same code. A floating-point square root is not an acceptable substitute: its rounding is not guaranteed identical across architectures, and this value fixes a settlement height.
+
+| Hold | Window | ≈ at 6s |
+|---|---|---|
+| 50 (protocol minimum) | 50 | 5 min |
+| 600 (ramp starts) | 50 | 5 min |
+| 3,600 | 646 | 1.1 h |
+| 14,400 | 1,328 | 2.2 h |
+| 100,800 | 3,495 | 5.8 h |
+| 432,000 (ramp ends) | 7,200 | 12 h |
+| 5,255,950 (horizon) | 7,200 | 12 h |
+
+The shape is concave because the risk is: if breakage arrives at a roughly constant rate, the probability a guardian is broken when the window opens rises fastest early and then saturates. A guardian that accepted 50 blocks ago has just been observed transacting and needs the least cushion; one last seen a year ago needs the most.
+
+`reveal_end_block = reveal_start_block + RevealWindow` is computed once at publication and **stored on the secret record**, alongside `reveal_start_block`. Both are frozen from that moment: nothing in the lifecycle moves them, and every consumer reads the stored heights rather than re-deriving them. Import-time validation therefore checks the stored window is ordered and lies within `RevealWindowFloor … RevealWindowCeiling`, not that it matches a fresh derivation.
+
+All terms are block counts. The wall-clock readings above describe the production 6-second cadence and are not promises the protocol makes at another one.
 
 ### 👮 Guardian Reveal Stage
 
@@ -1327,8 +1369,8 @@ economic constants.
 | **Commit Window** | 50 blocks (~5 minutes) | Fixed for every secret: `commit_deadline = creation_height + 50`. Not creator-settable |
 | **Min Reveal Buffer** | 50 blocks | Buffer from commit deadline to reveal start |
 | **Min Reveal Start Offset** | 100 blocks | Commit window + buffer; the floor is a constant, not a computation |
-| **Min Window Duration** | 100 blocks (~10 minutes) | Shortest reveal period |
-| **Max Window Duration** | 14,400 blocks (~1 day) | Longest reveal period |
+| **Max Reveal Start Offset** | 5,248,800 blocks | `H − RevealWindowCeiling`: the furthest opening whose derived window still closes inside the horizon |
+| **Reveal Window** | 50–7,200 blocks | Derived from the hold, not creator-settable — see [The Reveal Window](#the-reveal-window-normative) |
 | **Max Reveal Horizon `H`** | 5,256,000 blocks (~1 year) | `reveal_end_block` within `H` of creation (= max guardian availability) |
 | **Min/Max Threshold** | 2 / 16 | SSS reconstruction bounds |
 | **Min/Max Shares** | 2 / 32 | Band bounds: `threshold ≤ min_shares ≤ max_shares ≤ 32`, `max − min < threshold` |
@@ -1500,6 +1542,7 @@ Note: Guardians earn directly from secret creators through reward pools, not fro
 | **Threshold Range** | 2–16 | SSS reconstruction bounds |
 | **Shares Band** | `threshold ≤ min ≤ max ≤ 32`, `max − min < threshold` | Creator-chosen guardian range; `max_shares` candidates selected, `min_shares` acceptances required |
 | **Bump Range** | 100–1000 (hundredths) | Security factor 1.00–10.00 |
+| **Reveal Start Offset** | 100–5,248,800 blocks | The only timing input; the window itself is derived from it |
 | **Max Reveal Horizon** | 5,256,000 blocks (~1 year) | `reveal_end_block` within `H` of creation (= max guardian availability) |
 
 #### Guardian Registration Limits (in MsgGuardianRegister)
