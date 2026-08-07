@@ -310,13 +310,13 @@ func TestEligibilityIndexIgnoresIneligibleRegistrations(t *testing.T) {
 		var reqErr error
 		used := measureGas(t, f, func(c sdk.Context) {
 			_, reqErr = msgServer.UserRequestGuardians(c, &types.MsgUserRequestGuardians{
-				Creator:       creator,
-				DetectionHint: testDetectionHint(),
-				Threshold:     3,
-				MinShares:     band,
-				MaxShares:     band,
-				RevealWindow:  &types.RevealWindow{StartOffset: 400, Duration: testRevealDuration},
-				Bump:          types.MinBump,
+				Creator:           creator,
+				DetectionHint:     testDetectionHint(),
+				Threshold:         3,
+				MinShares:         band,
+				MaxShares:         band,
+				RevealStartOffset: 400,
+				Bump:              types.MinBump,
 			})
 		})
 		require.NoError(t, reqErr)

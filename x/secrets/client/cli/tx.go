@@ -251,7 +251,7 @@ Examples:
 // CmdUserRequestGuardians returns a CLI command for requesting guardians (Phase 1)
 func CmdUserRequestGuardians() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "user-request-guardians [detection-hint] [threshold] [min-shares] [max-shares] [bump] [reveal-start-offset] [reveal-duration]",
+		Use:   "user-request-guardians [detection-hint] [threshold] [min-shares] [max-shares] [bump] [reveal-start-offset]",
 		Short: "Request guardian assignments for a new secret (Phase 1)",
 		Long: `Request guardian assignments for a new secret (Phase 1 of the three-phase commit protocol).
 
@@ -275,18 +275,17 @@ Parameters:
     indistinguishable from a real hint by design)
   - bump: Security factor in hundredths (100-1000 = 1.00-10.00). Scales the reward pool and each guardian's bond
   - reveal-start-offset: Blocks from now until reveals start (minimum 100 — the
-    fixed commit window plus the reveal buffer)
-  - reveal-duration: Duration of the reveal window in blocks (minimum 100; a
-    runnable invocation supplies both timing arguments)
+    fixed commit window plus the reveal buffer). The window's length is derived
+    from it by the protocol and is not a creator input
 
 Examples:
   # Request guardians with an SDK-derived detection hint:
-  # threshold 5, band [6, 9], bump 1.00, reveals open 150 blocks out for 150 blocks
-  timeflared tx secrets user-request-guardians <80-hex-chars> 5 6 9 100 150 150 --from creator
+  # threshold 5, band [6, 9], bump 1.00, reveals open 150 blocks out
+  timeflared tx secrets user-request-guardians <80-hex-chars> 5 6 9 100 150 --from creator
 
   # Devnet/testing: no discovery (--random-hint replaces the positional hint), bump 2.50
-  timeflared tx secrets user-request-guardians --random-hint 5 6 9 250 150 150 --from creator`,
-		Args: cobra.RangeArgs(4, 7),
+  timeflared tx secrets user-request-guardians --random-hint 5 6 9 250 150 --from creator`,
+		Args: cobra.RangeArgs(4, 6),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			clientCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
@@ -343,7 +342,6 @@ Examples:
 
 			// Handle optional parameters
 			var revealStartOffset int64 = types.MinRevealStartOffsetTotal // default: minimum valid offset
-			var revealDuration int64                                      // must be provided explicitly
 
 			// Parse optional reveal-start-offset (5th remaining argument)
 			if len(args) >= 5 {
@@ -351,19 +349,6 @@ Examples:
 				if err != nil {
 					return fmt.Errorf("invalid reveal-start-offset: %w", err)
 				}
-			}
-
-			// Parse optional reveal-duration (6th remaining argument)
-			if len(args) >= 6 {
-				revealDuration, err = strconv.ParseInt(args[5], 10, 64)
-				if err != nil {
-					return fmt.Errorf("invalid reveal-duration: %w", err)
-				}
-			}
-
-			// Validate that reveal duration is provided and meets minimum requirements
-			if revealDuration < types.MinRevealDuration {
-				return fmt.Errorf("reveal duration must be at least %d blocks (got %d)", types.MinRevealDuration, revealDuration)
 			}
 
 			ephemeralPub, tag := hint[:32], hint[32:40]
@@ -375,14 +360,11 @@ Examples:
 					EphemeralPub: ephemeralPub,
 					Tag:          tag,
 				},
-				Threshold: threshold,
-				MinShares: minShares,
-				MaxShares: maxShares,
-				Bump:      bump,
-				RevealWindow: &types.RevealWindow{
-					StartOffset: revealStartOffset,
-					Duration:    revealDuration,
-				},
+				Threshold:         threshold,
+				MinShares:         minShares,
+				MaxShares:         maxShares,
+				Bump:              bump,
+				RevealStartOffset: revealStartOffset,
 			}
 
 			if err := msg.ValidateBasic(); err != nil {

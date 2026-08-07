@@ -446,8 +446,7 @@ Initiate secret publication by reserving a secret with protocol-controlled guard
 |-------|------|----------|---------|------------|-------------|
 | `creator` | `string` | ✓ | - | Valid bech32 address; transaction signer | Secret creator |
 | `detection_hint` | `DetectionHint` | ✓ | - | Version 1; 32-byte ephemeral key (valid X25519 point); 8-byte tag. Content is deliberately unverifiable — random bytes are a valid no-discovery hint | Recipient discovery hint, derived client-side from the recipient's public key |
-| `reveal_window.start_offset` | `int64` | ✓ | - | 100–5,256,000 blocks. The floor is the fixed commit window (50) plus the reveal buffer (50); additionally `start_offset + duration ≤ 5,256,000` (~1 year horizon) | Blocks from now until reveals may start |
-| `reveal_window.duration` | `int64` | ✓ | - | 100–14,400 blocks (~10 minutes – 1 day) | Reveal window length |
+| `reveal_start_offset` | `int64` | ✓ | - | 100–5,248,800 blocks. The floor is the fixed commit window (50) plus the reveal buffer (50); the ceiling is the ~1 year horizon less the longest derived window, so `reveal_end_block` always lands inside it | Blocks from now until reveals may start. The window's length is derived from it |
 | `threshold` | `int64` | ✓ | - | 2–16 | Key shares needed for reconstruction |
 | `min_shares` | `int64` | ✓ | - | `threshold ≤ min_shares` | Band floor: minimum acceptances for activation |
 | `max_shares` | `int64` | ✓ | - | `min_shares ≤ max_shares ≤ 32`, `max_shares − min_shares < threshold` (strict gap bound) | Band ceiling: guardians selected and shares distributed |
@@ -492,15 +491,15 @@ type GuardianInfo {
 
 ```bash
 # Request guardians: threshold 5, band [6, 9], bump 1.00,
-# reveals open 150 blocks from now for 150 blocks
+# reveals open 150 blocks from now (the window's length follows from that offset)
 timeflared tx secrets user-request-guardians \
-  "$DETECTION_HINT" 5 6 9 100 150 150 \
+  "$DETECTION_HINT" 5 6 9 100 150 \
   --from alice --output json
 
 # Devnet/testing: --random-hint replaces the positional hint (no discovery;
 # random bytes are indistinguishable from a real hint by design)
 timeflared tx secrets user-request-guardians \
-  --random-hint 5 6 9 100 150 150 \
+  --random-hint 5 6 9 100 150 \
   --from alice
 ```
 
@@ -784,8 +783,9 @@ production block time (`x/secrets/types/constants.go` unless noted).
 |---|---|---|
 | 50 blocks (~5 min) | `CommitTimeoutBlocks` | The single `commit_deadline` covering all three commit phases; fixed for every secret, not creator-settable |
 | +50 blocks (~5 min) | `MinRevealStartOffset` | Buffer between commit deadline and earliest reveal start; with the commit window fixed, the `start_offset` floor is a constant 100 |
-| 5,256,000 blocks (~1 year) | `MaxRevealHorizon` (= `MaxRevealStartOffset` = `MaxAvailabilityWindow`) | Furthest `reveal_end_block` can lie from creation; deliberately equals the availability cap so every valid window can be staffed |
-| 100–14,400 blocks (10 min – 1 day) | `MinRevealDuration` / `MaxRevealDuration` | Reveal window size |
+| 5,256,000 blocks (~1 year) | `MaxRevealHorizon` (= `MaxAvailabilityWindow`) | Furthest `reveal_end_block` can lie from creation; deliberately equals the availability cap so every valid window can be staffed |
+| 5,248,800 blocks | `MaxRevealStartOffset` (= `MaxRevealHorizon − RevealWindowCeiling`) | Furthest `start_offset`; the derived window still closes on the horizon |
+| 50–7,200 blocks (~5 min – 12 h) | `RevealWindowFloor` / `RevealWindowCeiling`, ramping between `RevealRampStart` (600) and `RevealRampEnd` (432,000) | Reveal window size, derived from the hold rather than creator-settable — see spec.md "The Reveal Window" |
 | 100 blocks (~10 min) | `MinAvailabilityWindow` | Minimum guardian registration window |
 | +1 block / ≤ 2,628,000 blocks (~6 months) | `MinAvailableFromOffset` / `MaxAvailableFromOffset` | Guardian availability start bounds |
 | 432,000 blocks (~30 days) | `KeyRotationMinIntervalBlocks` | Minimum spacing between a guardian's key rotations, from the newest epoch's effective height (epoch 0 starts the clock); bounds history growth to ~12 entries/guardian-year. Dev-override via `TIMEFLARE_KEY_ROTATION_MIN_INTERVAL` (see note below) |

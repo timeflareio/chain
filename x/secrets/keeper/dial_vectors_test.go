@@ -18,14 +18,13 @@ import (
 // a client cannot offer a value this chain rejects — nor refuse one it accepts
 // — without one of the two suites failing.
 //
-// This lives in the keeper package rather than in x/secrets/types because one
-// of the bounds is context-dependent and is enforced HERE, not in
-// ValidateBasic: the whole window must sit inside the horizon, which needs the
-// block height. A corpus asserted only against ValidateBasic would pass drafts
-// the handler goes on to reject, which is precisely the client-side defect the
-// corpus exists to prevent. (The reveal-offset floor used to be keeper-only
-// too; with the commit window a protocol constant it is a constant floor that
-// ValidateBasic can check statelessly.)
+// This lives in the keeper package because the corpus is asserted against BOTH
+// validation layers a real request passes. The two agree on every bound today —
+// the commit window and the reveal window are both protocol constants, so the
+// offset floor and ceiling are constants that ValidateBasic can check
+// statelessly — and running the handler's copy as well is what keeps them from
+// drifting apart. A corpus asserted against only one layer would pass drafts the
+// other rejects, which is the client-side defect the corpus exists to prevent.
 
 type dialCase struct {
 	Name                    string `json:"name"`
@@ -34,7 +33,6 @@ type dialCase struct {
 	MaxShares               int64  `json:"max_shares"`
 	BumpHundredths          int64  `json:"bump_hundredths"`
 	RevealStartOffsetBlocks int64  `json:"reveal_start_offset_blocks"`
-	RevealDurationBlocks    int64  `json:"reveal_duration_blocks"`
 	Valid                   bool   `json:"valid"`
 	Reason                  string `json:"reason"`
 }
@@ -70,19 +68,16 @@ func validateDialCase(c dialCase) error {
 			EphemeralPub: bytes.Repeat([]byte{0x42}, 32),
 			Tag:          bytes.Repeat([]byte{0x07}, 8),
 		},
-		RevealWindow: &types.RevealWindow{
-			StartOffset: c.RevealStartOffsetBlocks,
-			Duration:    c.RevealDurationBlocks,
-		},
-		Threshold: c.Threshold,
-		MinShares: c.MinShares,
-		MaxShares: c.MaxShares,
-		Bump:      c.BumpHundredths,
+		RevealStartOffset: c.RevealStartOffsetBlocks,
+		Threshold:         c.Threshold,
+		MinShares:         c.MinShares,
+		MaxShares:         c.MaxShares,
+		Bump:              c.BumpHundredths,
 	}
 	if err := msg.ValidateBasic(); err != nil {
 		return err
 	}
-	return (msgServer{}).validateRevealWindow(msg.RevealWindow)
+	return (msgServer{}).validateRevealStartOffset(msg.RevealStartOffset)
 }
 
 func TestDialVectors(t *testing.T) {
@@ -121,12 +116,11 @@ func TestDialCorpusBoundsMatchConstants(t *testing.T) {
 		Min int64 `json:"min"`
 		Max int64 `json:"max"`
 	}
-	var threshold, minShares, bump, offset, duration minMax
+	var threshold, minShares, bump, offset minMax
 	require.NoError(t, json.Unmarshal(corpus.Bounds["threshold"], &threshold))
 	require.NoError(t, json.Unmarshal(corpus.Bounds["min_shares"], &minShares))
 	require.NoError(t, json.Unmarshal(corpus.Bounds["bump_hundredths"], &bump))
 	require.NoError(t, json.Unmarshal(corpus.Bounds["reveal_start_offset_blocks"], &offset))
-	require.NoError(t, json.Unmarshal(corpus.Bounds["reveal_duration_blocks"], &duration))
 
 	require.Equal(t, types.MinThreshold, threshold.Min)
 	require.Equal(t, types.MaxThreshold, threshold.Max)
@@ -136,6 +130,4 @@ func TestDialCorpusBoundsMatchConstants(t *testing.T) {
 	require.Equal(t, types.MaxBump, bump.Max)
 	require.Equal(t, types.MinRevealStartOffsetTotal, offset.Min)
 	require.Equal(t, types.MaxRevealStartOffset, offset.Max)
-	require.Equal(t, types.MinRevealDuration, duration.Min)
-	require.Equal(t, types.MaxRevealDuration, duration.Max)
 }

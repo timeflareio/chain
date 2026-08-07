@@ -401,13 +401,13 @@ func setupTestSecretWithShareInternal(
 
 	// Phase 1: Request guardians
 	requestMsg := &types.MsgUserRequestGuardians{
-		Creator:       creator.String(),
-		DetectionHint: testDetectionHint(),
-		RevealWindow:  &types.RevealWindow{StartOffset: 300, Duration: types.MinRevealDuration},
-		Threshold:     3,
-		MinShares:     9,
-		MaxShares:     9,
-		Bump:          types.MinBump,
+		Creator:           creator.String(),
+		DetectionHint:     testDetectionHint(),
+		RevealStartOffset: 300,
+		Threshold:         3,
+		MinShares:         9,
+		MaxShares:         9,
+		Bump:              types.MinBump,
 	}
 
 	requestResp, err := msgServer.UserRequestGuardians(f.ctx, requestMsg)

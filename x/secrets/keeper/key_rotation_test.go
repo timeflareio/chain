@@ -231,13 +231,13 @@ func TestKeyRotation_SameBlockSelectionHandsPreRotationKey(t *testing.T) {
 
 	requestAll := func() *types.MsgUserRequestGuardiansResponse {
 		resp, err := msgServer.UserRequestGuardians(f.ctx, &types.MsgUserRequestGuardians{
-			Creator:       sdk.AccAddress([]byte("creator_address")).String(),
-			DetectionHint: testDetectionHint(),
-			Threshold:     2,
-			MinShares:     3,
-			MaxShares:     3, // selects all three — the rotator is guaranteed in
-			RevealWindow:  &types.RevealWindow{StartOffset: 400, Duration: testRevealDuration},
-			Bump:          types.MinBump,
+			Creator:           sdk.AccAddress([]byte("creator_address")).String(),
+			DetectionHint:     testDetectionHint(),
+			Threshold:         2,
+			MinShares:         3,
+			MaxShares:         3, // selects all three — the rotator is guaranteed in
+			RevealStartOffset: 400,
+			Bump:              types.MinBump,
 		})
 		require.NoError(t, err)
 		return resp
@@ -294,7 +294,7 @@ func TestKeyRotation_LifecycleSpansRotation(t *testing.T) {
 	setHeight(f, createHeight)
 
 	// Phase 1 + 2 (request + distribute), selected under epoch 0
-	secretId, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 3, 3, 400, testRevealDuration)
+	secretId, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 3, 3, 400)
 	require.NoError(t, err)
 
 	// Rotation lands mid-commit — no freeze, no per-secret pin, nothing to
@@ -329,13 +329,13 @@ func TestKeyRotation_LifecycleSpansRotation(t *testing.T) {
 
 	// The next secret selects under the NEW epoch
 	resp, err := msgServer.UserRequestGuardians(f.ctx, &types.MsgUserRequestGuardians{
-		Creator:       sdk.AccAddress([]byte("creator_address")).String(),
-		DetectionHint: testDetectionHint(),
-		Threshold:     2,
-		MinShares:     3,
-		MaxShares:     3,
-		RevealWindow:  &types.RevealWindow{StartOffset: 400, Duration: testRevealDuration},
-		Bump:          types.MinBump,
+		Creator:           sdk.AccAddress([]byte("creator_address")).String(),
+		DetectionHint:     testDetectionHint(),
+		Threshold:         2,
+		MinShares:         3,
+		MaxShares:         3,
+		RevealStartOffset: 400,
+		Bump:              types.MinBump,
 	})
 	require.NoError(t, err)
 	for _, info := range resp.GuardianAssignments {
@@ -365,7 +365,7 @@ func TestKeyRotation_EarlyRevealEvidenceSurvivesRotation(t *testing.T) {
 
 	createHeight := firstRotationHeight(100)
 	setHeight(f, createHeight)
-	secretId, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 3, 3, 400, testRevealDuration)
+	secretId, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 3, 3, 400)
 	require.NoError(t, err)
 
 	for _, g := range guardians {

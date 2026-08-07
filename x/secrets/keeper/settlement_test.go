@@ -629,7 +629,7 @@ func TestCancellation_ExcludesEarlySlashedLeaker(t *testing.T) {
 	f.ctx = sdk.UnwrapSDKContext(f.ctx).WithBlockHeight(100)
 
 	const bump = types.MinBump
-	bond := conformanceBond(bump, 400, testRevealDuration)
+	bond := conformanceBond(bump, 400)
 
 	// Full pipeline: 3 slots, all accepted → pending, bonds locked
 	secretId := setupBondTestSecret(t, f, msgServer, bump, 2, 3)

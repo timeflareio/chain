@@ -40,17 +40,17 @@ func registerConformanceGuardian(t *testing.T, f *fixture, msgServer types.MsgSe
 }
 
 // requestConformanceSecret drives Phases 1+2 with explicit parameters.
-func requestConformanceSecret(t *testing.T, f *fixture, msgServer types.MsgServer, bump, threshold, minShares, maxShares, startOffset, duration int64) (string, error) {
+func requestConformanceSecret(t *testing.T, f *fixture, msgServer types.MsgServer, bump, threshold, minShares, maxShares, startOffset int64) (string, error) {
 	t.Helper()
 	creator := sdk.AccAddress([]byte("creator_address")).String()
 	resp, err := msgServer.UserRequestGuardians(f.ctx, &types.MsgUserRequestGuardians{
-		Creator:       creator,
-		DetectionHint: testDetectionHint(),
-		Threshold:     threshold,
-		MinShares:     minShares,
-		MaxShares:     maxShares,
-		RevealWindow:  &types.RevealWindow{StartOffset: startOffset, Duration: duration},
-		Bump:          bump,
+		Creator:           creator,
+		DetectionHint:     testDetectionHint(),
+		Threshold:         threshold,
+		MinShares:         minShares,
+		MaxShares:         maxShares,
+		RevealStartOffset: startOffset,
+		Bump:              bump,
 	})
 	if err != nil {
 		return "", err
@@ -82,10 +82,10 @@ func requestConformanceSecret(t *testing.T, f *fixture, msgServer types.MsgServe
 
 // conformanceBond is the frozen bond a freshly registered guardian (k at the
 // registration floor) posts on a conformance secret of the given shape:
-// distance = start_offset + duration + 1 − CommitTimeoutBlocks, B = rate ×
+// distance = start_offset + derived window + 1 − CommitTimeoutBlocks, B = rate ×
 // distance × bump × k.
-func conformanceBond(bump, startOffset, duration int64) math.Int {
-	distance := startOffset + duration + 1 - types.CommitTimeoutBlocks
+func conformanceBond(bump, startOffset int64) math.Int {
+	distance := startOffset + types.RevealWindowForStartOffset(startOffset) + 1 - types.CommitTimeoutBlocks
 	return types.BondAmount(distance, bump, types.InitialBondK)
 }
 
@@ -125,7 +125,7 @@ func TestConformance_A6_TopUpMidHoldThenWithdraw(t *testing.T) {
 	msgServer := keeper.NewMsgServerImpl(f.keeper)
 	setHeight(f, 100)
 
-	bond := conformanceBond(types.MinBump, 400, testRevealDuration)
+	bond := conformanceBond(types.MinBump, 400)
 
 	secretId := setupBondTestSecret(t, f, msgServer, types.MinBump, 2, 3)
 	secret, _ := f.keeper.GetSecret(f.ctx, secretId)
@@ -173,7 +173,7 @@ func TestConformance_B1_HighBumpExcludesSmallFloats(t *testing.T) {
 	setHeight(f, 100)
 
 	const bump = types.MaxBump // 10.00 — the priciest bond this shape can demand
-	bigBond := conformanceBond(bump, 400, 150)
+	bigBond := conformanceBond(bump, 400)
 
 	big := map[string]bool{}
 	for i := 0; i < 3; i++ {
@@ -185,7 +185,7 @@ func TestConformance_B1_HighBumpExcludesSmallFloats(t *testing.T) {
 	}
 	setHeight(f, height(f)+1) // availability windows begin
 
-	secretId, err := requestConformanceSecret(t, f, msgServer, bump, 2, 2, 2, 400, 150)
+	secretId, err := requestConformanceSecret(t, f, msgServer, bump, 2, 2, 2, 400)
 	require.NoError(t, err)
 
 	secret, _ := f.keeper.GetSecret(f.ctx, secretId)
@@ -210,7 +210,7 @@ func TestConformance_B2_InsufficientGuardiansEscrowsNothing(t *testing.T) {
 	setHeight(f, height(f)+1)
 	escrowedBefore := *bank.escrowedIn
 
-	_, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 5, 5, 400, 150) // needs max_shares 5, has 1
+	_, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 5, 5, 400) // needs max_shares 5, has 1
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "insufficient guardians")
 
@@ -236,7 +236,7 @@ func TestConformance_B5_FloatExhaustionAcrossSecrets(t *testing.T) {
 	msgServer := keeper.NewMsgServerImpl(f.keeper)
 	setHeight(f, 100)
 
-	bond := conformanceBond(types.MinBump, 400, 150)
+	bond := conformanceBond(types.MinBump, 400)
 
 	// Exactly one bond of float each — every guardian can carry ONE secret
 	guardians := make([]string, 3)
@@ -247,9 +247,9 @@ func TestConformance_B5_FloatExhaustionAcrossSecrets(t *testing.T) {
 
 	// Both secrets select all three candidates (band [min 2, max 3]) while
 	// everyone's unlocked float still covers the bond
-	secretA, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 3, 400, 150)
+	secretA, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 3, 400)
 	require.NoError(t, err)
-	secretB, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 3, 400, 150)
+	secretB, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 3, 400)
 	require.NoError(t, err)
 
 	// Guardians 0 and 1 fill secret A (locks their only bond)
@@ -319,7 +319,7 @@ func TestConformance_B7_WithdrawMidHoldThenSettle(t *testing.T) {
 	msgServer := keeper.NewMsgServerImpl(f.keeper)
 	setHeight(f, 100)
 
-	bond := conformanceBond(types.MinBump, 400, testRevealDuration)
+	bond := conformanceBond(types.MinBump, 400)
 
 	secretId := setupBondTestSecret(t, f, msgServer, types.MinBump, 2, 3)
 	secret, _ := f.keeper.GetSecret(f.ctx, secretId)
@@ -1227,20 +1227,23 @@ func TestConformance_F5_HorizonCapBoundary(t *testing.T) {
 	}
 	setHeight(f, height(f)+1)
 
-	// horizon = startOffset + duration (reveal_end_block offset from creation)
-	duration := types.MaxRevealDuration
+	// The horizon bound is carried entirely by the offset ceiling: it is H less
+	// the longest window the derivation can return, so the furthest legal
+	// opening closes exactly on H.
+	require.Equal(t, types.MaxRevealHorizon,
+		types.MaxRevealStartOffset+types.RevealWindowForStartOffset(types.MaxRevealStartOffset),
+		"the offset ceiling must place reveal_end_block exactly on the horizon")
 
-	// Exactly H: validates and selection succeeds — the freshly registered
-	// guardians' availability reaches reveal_end_block with zero slack
-	offsetAtH := types.MaxRevealHorizon - duration
-	_, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 2, offsetAtH, duration)
+	// Exactly at the ceiling: validates and selection succeeds — the freshly
+	// registered guardians' availability reaches reveal_end_block with zero slack
+	_, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 2, types.MaxRevealStartOffset)
 	require.NoError(t, err,
-		"a horizon of exactly H must validate and be staffable by a max-availability guardian")
+		"a window closing on exactly H must validate and be staffable by a max-availability guardian")
 
-	// H + 1: rejected by the horizon validation itself
-	_, err = requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 2, offsetAtH+1, duration)
+	// One block past it: rejected by the offset validation
+	_, err = requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 2, types.MaxRevealStartOffset+1)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "reveal window ends too far in the future")
+	require.Contains(t, err.Error(), "reveal start offset too large")
 
 	assertInvariants(t, f)
 }
@@ -1350,7 +1353,7 @@ func TestConformance_G3_HigherKPricesABiggerBond(t *testing.T) {
 	require.NoError(t, f.keeper.AdjustBondKOnSlash(f.ctx, punished))
 	punishedK := types.NextBondKAfterSlash(types.NextBondKAfterSlash(types.MinBondK))
 
-	secretId, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 3, 3, 400, 150)
+	secretId, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 3, 3, 400)
 	require.NoError(t, err)
 	secret, _ := f.keeper.GetSecret(f.ctx, secretId)
 	distance := (secret.RevealEndBlock + 1) - secret.CommitDeadline
@@ -1394,7 +1397,7 @@ func TestConformance_G4_ConcurrencyCapGate(t *testing.T) {
 	require.NoError(t, f.keeper.SetGuardian(f.ctx, g))
 
 	// Selection gate: the saturated guardian is not a candidate
-	secretId, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 3, 3, 400, 150)
+	secretId, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 3, 3, 400)
 	require.NoError(t, err)
 	secret, _ := f.keeper.GetSecret(f.ctx, secretId)
 	for _, addr := range secret.SelectedGuardians {
@@ -1438,7 +1441,7 @@ func hBandSecret(t *testing.T, f *fixture, msgServer types.MsgServer, prefix str
 		registerConformanceGuardian(t, f, msgServer, fmt.Sprintf("%s_g%02d", prefix, i), testFloatUnit())
 	}
 	setHeight(f, height(f)+1)
-	secretId, err := requestConformanceSecret(t, f, msgServer, types.MinBump, threshold, minShares, maxShares, 400, 150)
+	secretId, err := requestConformanceSecret(t, f, msgServer, types.MinBump, threshold, minShares, maxShares, 400)
 	require.NoError(t, err)
 	secret, err := f.keeper.GetSecret(f.ctx, secretId)
 	require.NoError(t, err)
@@ -1600,7 +1603,7 @@ func TestConformance_H5_GapBoundRejectedAtHandler(t *testing.T) {
 	}
 	setHeight(f, height(f)+1)
 
-	_, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 4, 400, 150)
+	_, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 4, 400)
 	require.Error(t, err, "gap 2 with threshold 2 violates the strict bound")
 	require.Contains(t, err.Error(), "strictly below threshold")
 
@@ -1646,7 +1649,7 @@ func TestConformance_I1_CreationFeeFloorRegime(t *testing.T) {
 
 	// Small shape: distance ≈ 551 blocks, 3 guardians, bump 1 — the curve
 	// fee is tiny, so the 60,000 uveil floor prices the draw.
-	secretId, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 3, 400, 150)
+	secretId, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 3, 400)
 	require.NoError(t, err)
 
 	secret, err := f.keeper.GetSecret(f.ctx, secretId)
@@ -1686,7 +1689,7 @@ func TestConformance_I2_CreationFeePercentRegime(t *testing.T) {
 
 	// Big shape inside the helper guardians' availability window: ~6 days
 	// of distance at bump 10 — the 5.5%-ish curve fee is ~4× the floor.
-	secretId, err := requestConformanceSecret(t, f, msgServer, types.MaxBump, 2, 2, 3, 90_000, 1_000)
+	secretId, err := requestConformanceSecret(t, f, msgServer, types.MaxBump, 2, 2, 3, 90_000)
 	require.NoError(t, err)
 
 	secret, err := f.keeper.GetSecret(f.ctx, secretId)
@@ -1717,7 +1720,7 @@ func TestConformance_I3_FailedRequestChargesNoFee(t *testing.T) {
 	setHeight(f, 100)
 	// No guardians registered at all: selection must fail.
 
-	_, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 3, 400, 150)
+	_, err := requestConformanceSecret(t, f, msgServer, types.MinBump, 2, 2, 3, 400)
 	require.Error(t, err, "selection must fail with no registered guardians")
 	require.True(t, bank.receivedByModule(authtypes.FeeCollectorName).IsZero(),
 		"a failed request must charge no creation fee")

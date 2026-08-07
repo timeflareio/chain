@@ -21,9 +21,6 @@ import (
 	"github.com/timeflareio/chain/x/secrets/types"
 )
 
-// Test constants
-const testRevealDuration = int64(150)
-
 // testFloatUnit is the fixture float-sizing unit: 5,000 VEIL in uveil — the
 // retired flat bond amount, kept as a capital scale so existing fixture
 // relationships stay recognisable. Actual bonds are duration-anchored now

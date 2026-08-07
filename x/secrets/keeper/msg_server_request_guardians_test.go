@@ -20,16 +20,13 @@ func TestMsgUserRequestGuardians_Success(t *testing.T) {
 	creator := sdk.AccAddress([]byte("creator_address"))
 
 	msg := &types.MsgUserRequestGuardians{
-		Creator:       creator.String(),
-		DetectionHint: testDetectionHint(),
-		Threshold:     3,
-		MinShares:     15,
-		MaxShares:     17, // band: gap 2 < threshold 3
-		RevealWindow: &types.RevealWindow{
-			StartOffset: types.MinRevealStartOffsetTotal, // 200 + 50 = 250 blocks minimum safe offset
-			Duration:    testRevealDuration,              // 150 block duration (15 minutes)
-		},
-		Bump: types.MinBump,
+		Creator:           creator.String(),
+		DetectionHint:     testDetectionHint(),
+		Threshold:         3,
+		MinShares:         15,
+		MaxShares:         17, // band: gap 2 < threshold 3
+		RevealStartOffset: types.MinRevealStartOffsetTotal,
+		Bump:              types.MinBump,
 	}
 
 	resp, err := msgServer.UserRequestGuardians(f.ctx, msg)
@@ -100,128 +97,104 @@ func TestMsgUserRequestGuardians_InvalidParameters(t *testing.T) {
 		{
 			name: "invalid threshold - zero",
 			msg: &types.MsgUserRequestGuardians{
-				Creator:       creator.String(),
-				DetectionHint: testDetectionHint(),
-				Threshold:     0,
-				MinShares:     15,
-				MaxShares:     15,
-				RevealWindow: &types.RevealWindow{
-					StartOffset: types.MinRevealStartOffsetTotal,
-					Duration:    testRevealDuration,
-				},
-				Bump: types.MinBump,
+				Creator:           creator.String(),
+				DetectionHint:     testDetectionHint(),
+				Threshold:         0,
+				MinShares:         15,
+				MaxShares:         15,
+				RevealStartOffset: types.MinRevealStartOffsetTotal,
+				Bump:              types.MinBump,
 			},
 			expectError: "threshold must be between",
 		},
 		{
 			name: "invalid shares - too low",
 			msg: &types.MsgUserRequestGuardians{
-				Creator:       creator.String(),
-				DetectionHint: testDetectionHint(),
-				Threshold:     3,
-				MinShares:     2, // Must be >= threshold,
-				MaxShares:     2, // Must be >= threshold,
-				RevealWindow: &types.RevealWindow{
-					StartOffset: types.MinRevealStartOffsetTotal,
-					Duration:    testRevealDuration,
-				},
-				Bump: types.MinBump,
+				Creator:           creator.String(),
+				DetectionHint:     testDetectionHint(),
+				Threshold:         3,
+				MinShares:         2, // Must be >= threshold,
+				MaxShares:         2, // Must be >= threshold,
+				RevealStartOffset: types.MinRevealStartOffsetTotal,
+				Bump:              types.MinBump,
 			},
 			expectError: "min_shares (2) must be >= threshold (3)",
 		},
 		{
 			name: "threshold exceeds shares",
 			msg: &types.MsgUserRequestGuardians{
-				Creator:       creator.String(),
-				DetectionHint: testDetectionHint(),
-				Threshold:     16,
-				MinShares:     15, // threshold > shares,
-				MaxShares:     15, // threshold > shares,
-				RevealWindow: &types.RevealWindow{
-					StartOffset: types.MinRevealStartOffsetTotal,
-					Duration:    testRevealDuration,
-				},
-				Bump: types.MinBump,
+				Creator:           creator.String(),
+				DetectionHint:     testDetectionHint(),
+				Threshold:         16,
+				MinShares:         15, // threshold > shares,
+				MaxShares:         15, // threshold > shares,
+				RevealStartOffset: types.MinRevealStartOffsetTotal,
+				Bump:              types.MinBump,
 			},
 			expectError: "min_shares (15) must be >= threshold (16)",
 		},
 		{
 			name: "invalid reveal window - start in past",
 			msg: &types.MsgUserRequestGuardians{
-				Creator:       creator.String(),
-				DetectionHint: testDetectionHint(),
-				Threshold:     3,
-				MinShares:     15,
-				MaxShares:     15,
-				RevealWindow: &types.RevealWindow{
-					StartOffset: -1, // Invalid negative offset
-					Duration:    testRevealDuration,
-				},
-				Bump: types.MinBump,
+				Creator:           creator.String(),
+				DetectionHint:     testDetectionHint(),
+				Threshold:         3,
+				MinShares:         15,
+				MaxShares:         15,
+				RevealStartOffset: -1,
+				Bump:              types.MinBump,
 			},
 			expectError: "reveal start offset too small",
 		},
 		{
-			name: "invalid reveal window - end before start",
+			name: "invalid reveal window - offset above the ceiling",
 			msg: &types.MsgUserRequestGuardians{
-				Creator:       creator.String(),
-				DetectionHint: testDetectionHint(),
-				Threshold:     3,
-				MinShares:     15,
-				MaxShares:     15,
-				RevealWindow: &types.RevealWindow{
-					StartOffset: types.MinRevealStartOffsetTotal, // Valid start offset (200 + 50 = 250)
-					Duration:    -50,                             // Invalid negative duration
-				},
-				Bump: types.MinBump,
+				Creator:           creator.String(),
+				DetectionHint:     testDetectionHint(),
+				Threshold:         3,
+				MinShares:         15,
+				MaxShares:         15,
+				RevealStartOffset: types.MaxRevealStartOffset + 1,
+				Bump:              types.MinBump,
 			},
-			expectError: "reveal duration too short",
+			expectError: "reveal start offset too large",
 		},
 		{
 			name: "invalid reveal window - min interval too small",
 			msg: &types.MsgUserRequestGuardians{
-				Creator:       creator.String(),
-				DetectionHint: testDetectionHint(),
-				Threshold:     3,
-				MinShares:     15,
-				MaxShares:     15,
-				RevealWindow: &types.RevealWindow{
-					StartOffset: types.MinRevealStartOffsetTotal - 1, // One less than minimum safe offset for boundary testing
-					Duration:    testRevealDuration,
-				},
-				Bump: types.MinBump,
+				Creator:           creator.String(),
+				DetectionHint:     testDetectionHint(),
+				Threshold:         3,
+				MinShares:         15,
+				MaxShares:         15,
+				RevealStartOffset: types.MinRevealStartOffsetTotal - 1,
+				Bump:              types.MinBump,
 			},
 			expectError: "reveal start offset too small",
 		},
 		{
 			name: "insufficient reward",
 			msg: &types.MsgUserRequestGuardians{
-				Creator:       creator.String(),
-				DetectionHint: testDetectionHint(),
-				Threshold:     3,
-				MinShares:     15,
-				MaxShares:     15,
-				RevealWindow: &types.RevealWindow{
-					StartOffset: types.MinRevealStartOffsetTotal,
-					Duration:    testRevealDuration,
-				},
-				Bump: types.MinBump - 1, // Below 1.00
+				Creator:           creator.String(),
+				DetectionHint:     testDetectionHint(),
+				Threshold:         3,
+				MinShares:         15,
+				MaxShares:         15,
+				RevealStartOffset: types.MinRevealStartOffsetTotal,
+				Bump:              types.MinBump - 1, // Below 1.00
 			},
 			expectError: "bump must be between",
 		},
 		{
 			name: "bump above max tier",
 			msg: &types.MsgUserRequestGuardians{
-				Creator:       creator.String(),
-				DetectionHint: testDetectionHint(),
-				Threshold:     3,
-				MinShares:     15,
-				MaxShares:     15,
-				RevealWindow: &types.RevealWindow{
-					StartOffset: types.MinRevealStartOffsetTotal,
-					Duration:    testRevealDuration,
-				},
-				Bump: types.MaxBump + 1, // Above max tier
+				Creator:           creator.String(),
+				DetectionHint:     testDetectionHint(),
+				Threshold:         3,
+				MinShares:         15,
+				MaxShares:         15,
+				RevealStartOffset: types.MinRevealStartOffsetTotal,
+				Bump:              types.MaxBump + 1, // Above max tier
 			},
 			expectError: "bump must be between",
 		},
@@ -250,16 +223,13 @@ func TestMsgUserRequestGuardians_InsufficientGuardians(t *testing.T) {
 	creator := sdk.AccAddress([]byte("creator_address"))
 
 	msg := &types.MsgUserRequestGuardians{
-		Creator:       creator.String(),
-		DetectionHint: testDetectionHint(),
-		Threshold:     3,
-		MinShares:     15, // Need 5 guardians but only have 2,
-		MaxShares:     15, // Need 5 guardians but only have 2,
-		RevealWindow: &types.RevealWindow{
-			StartOffset: types.MinRevealStartOffsetTotal, // 200 + 50 = 250 blocks minimum safe offset
-			Duration:    testRevealDuration,              // 150 block duration (15 minutes)
-		},
-		Bump: types.MinBump,
+		Creator:           creator.String(),
+		DetectionHint:     testDetectionHint(),
+		Threshold:         3,
+		MinShares:         15, // Need 5 guardians but only have 2,
+		MaxShares:         15, // Need 5 guardians but only have 2,
+		RevealStartOffset: types.MinRevealStartOffsetTotal,
+		Bump:              types.MinBump,
 	}
 
 	_, err := msgServer.UserRequestGuardians(f.ctx, msg)
@@ -282,16 +252,13 @@ func TestMsgUserRequestGuardians_GuardianSelection(t *testing.T) {
 	creator := sdk.AccAddress([]byte("creator_address"))
 
 	msg := &types.MsgUserRequestGuardians{
-		Creator:       creator.String(),
-		DetectionHint: testDetectionHint(),
-		Threshold:     3,
-		MinShares:     15,
-		MaxShares:     15,
-		RevealWindow: &types.RevealWindow{
-			StartOffset: types.MinRevealStartOffsetTotal, // 200 + 50 = 250 blocks minimum safe offset
-			Duration:    testRevealDuration,              // 150 block duration (15 minutes)
-		},
-		Bump: types.MinBump,
+		Creator:           creator.String(),
+		DetectionHint:     testDetectionHint(),
+		Threshold:         3,
+		MinShares:         15,
+		MaxShares:         15,
+		RevealStartOffset: types.MinRevealStartOffsetTotal,
+		Bump:              types.MinBump,
 	}
 
 	resp, err := msgServer.UserRequestGuardians(f.ctx, msg)
