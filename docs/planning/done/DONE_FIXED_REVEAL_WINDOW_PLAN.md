@@ -28,7 +28,12 @@ not. Remove the field and derive the window on chain.*
 >    `PROTOCOL_CHANGE.md` describes, but in the target rather than the operator.
 >    Worked around with `rm -rf .devnet/sdk`; it wants a real fix.
 > 3. **`mobile-client` has two SDK pins**, not one: `app/package.json` and
->    `e2e/package.json`, which had drifted to different versions.
+>    `e2e/package.json`. Both are legitimate — they are separate npm workspaces
+>    and both consume the SDK, `e2e` driving it directly in its suites — and both
+>    sat at `v0.0.3` before this change. Nothing keeps them equal, so moving one
+>    is silently a divergence until npm hoists them into conflicting lockfile
+>    entries and the type-checker resolves the stale one. The chain has
+>    `make verify-pins` for this class of problem; mobile has no equivalent.
 >
 > Neither 2 nor 3 is in this plan's scope; both are worth their own change.
 >
