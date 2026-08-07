@@ -5,8 +5,12 @@
   of the suite's eleven scenarios never run in CI because the job cannot afford
   them. Measured end state: **all eleven at ~5 minutes of block time**, against
   ~19 minutes for nine of them today.
-- **Status** — `ready` (6 August 2026). All open questions ruled by the owner,
-  4–6 August 2026; the rulings are folded into the body below.
+- **Status** — `done` (6 August 2026), branch `e2e-scenario-determinism`. All open
+  questions were ruled by the owner, 4–6 August 2026, and are folded into the body
+  below. Verified by five consecutive full runs at a measured 226ms: 74 assertions
+  each, zero failures, zero redraws, `guardian-07` unchanged across all five chain
+  wipes, fleet unparked afterwards. Per-iteration wall clock 362–372s including a
+  full `dev-reset`, against 437–454s at the same cadence before the shrink.
 - **Origin** — owner request, 4 August 2026: shorten the E2E devnet lifecycle
   job, combining scenarios into one chain cycle where safe, followed by
   "ensure all scenario tests are deterministic, if guardian selection prevents
@@ -370,10 +374,19 @@ Expected: ~1,700 → ~1,370 blocks with S5 and S8 enabled.
 4. S8: rotate one guardian from A's set, reserve B inside a park window holding
    only A's five, restore, and assert B's selection contains the rotator. The
    six-draw retry loop goes with it.
-5. Close hazards 1 and 2 above: filter the three unscoped block-event reads by
-   `secret_id`, and narrow S10b's `tx_search` audit to the secret.
-6. `guardians_restart`: hazard 3 — restart only the named victim in native mode,
-   with `assert_fleet_intact` redefined accordingly.
+5. Close hazard 1: filter the three unscoped block-event reads by `secret_id`.
+   Hazard 2 cannot be closed as stated — a rejected message's events are discarded
+   with its state changes, so the delivered-and-rejected duplicates S10b hunts
+   carry no `secret_id` to filter on; only the successful accepts do, and those are
+   not the ones in question. The `tx_search` half stays scoped by height, and its
+   comment says so rather than implying otherwise. The primary evidence, the
+   daemon's own broadcast log, is already scoped to the secret.
+6. `guardians_restart`: hazard 3 needs only a comment. The native path calls
+   `guardians.sh start` with no count, and `cmd_start` skips daemons that are
+   already running — so it starts the victim and leaves the rest alone, which is
+   already the docker path's behaviour. The comment claiming it "restarts the
+   fleet" is what misleads; `assert_fleet_intact` is correct as written for a
+   suite that runs one perturbing scenario at a time.
 7. Add the four `docs/CHAIN_MECHANICS.md` ledger entries: the S8 draw lottery (an
    open defect, fixed here, and observed failing during this plan's measurement
    work), the non-reproducibility of devnet guardian identities (a trade-off closed
@@ -422,8 +435,12 @@ for nine today. Fixed setup costs put the realistic job at around ten minutes.
    value, so retention also bounds S10's rebate collection window.
 2. One job, no sharding (owner ruling, 4 August 2026). Sharding would multiply
    runner minutes, re-pay `dev-up` per shard, and do nothing for local runs.
-3. The cadence comes from `TEST_BLOCK_TIME`; CI passes `TIMEFLARE_BLOCK_TIME`
-   explicitly today and should take the canonical value rather than carry its own.
+3. CI keeps passing `TIMEFLARE_BLOCK_TIME` explicitly, and it must equal
+   `TEST_BLOCK_TIME`. It cannot simply inherit it: `dev-up` is also the interactive
+   path and correctly defaults to the deployment cadence in `networks.json`, so a
+   job that says nothing gets 6s blocks and a suite measured in hours. A test path
+   owning its cadence is the invariant working as intended; the cost is one
+   duplicated literal, recorded below.
 
 ## Overlapping the scenarios
 
@@ -490,6 +507,12 @@ whose failures have historically been misdiagnosed as protocol defects.
   `wait_state`'s 3s poll and `guardian_dir_for`'s 24-guardian lookup are what fail
   first. Reducing them would lower the floor further; that is its own piece of work,
   and phase 3 item 2 is where it would first be felt.
+- **The test cadence is stated twice.** `make/common.mk`'s `TEST_BLOCK_TIME` and
+  `ci.yml`'s `TIMEFLARE_BLOCK_TIME` must move together, because `dev-up` cannot
+  default to the test cadence without breaking the interactive path. Closing it
+  wants a make target that exports the canonical value for a caller to read, which
+  is a small piece of work of its own rather than something to invent while
+  executing this plan.
 - **Nothing here compiles a consumer.** The suite exercises released guardian and
   SDK artefacts at pinned versions.
 

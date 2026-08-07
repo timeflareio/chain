@@ -21,10 +21,14 @@
 #                               fees, and a real withdraw-rewards drill
 #   S5  retention pruning     — terminal secrets pruned at terminal_at +
 #                               RetentionBlocks, replaced by a digest-anchored
-#                               tombstone + archival event. Runs ONLY when the
-#                               chain was started with a reduced window:
-#                               TIMEFLARE_RETENTION_BLOCKS=60 make dev-reset &&
-#                               TIMEFLARE_RETENTION_BLOCKS=60 make e2e-scenarios
+#                               tombstone + archival event. 200 blocks rather than
+#                               the smallest window that proves pruning: the suite
+#                               has to READ a terminal record before it is pruned,
+#                               and at the test cadence 60 blocks was under eight
+#                               seconds — less than the queries take. Runs ONLY when
+#                               the chain was started with a reduced window:
+#                               TIMEFLARE_RETENTION_BLOCKS=200 make dev-reset &&
+#                               TIMEFLARE_RETENTION_BLOCKS=200 make e2e-scenarios
 #                               (production retention is ~6 months of blocks —
 #                               unset, S5 skips rather than waits)
 # ⚠️ Block time and the commit window. The commit window is the protocol
@@ -340,7 +344,7 @@ guardian_kill() { # guardian-NN
     fi
 }
 
-guardians_restart() { # guardian-NN (docker restarts just the victim; native restarts the fleet)
+guardians_restart() { # guardian-NN — brings the victim back, both control modes
     local out
     # Output is captured rather than discarded, and a failure is fatal here.
     # Swallowing it left the victim dead and moved the diagnosis two scenarios
@@ -352,10 +356,12 @@ guardians_restart() { # guardian-NN (docker restarts just the victim; native res
             fatal "restarting container timeflare-$1 failed"
         fi
     else
-        # No count: start ALL registered guardians. A hardcoded count silently
-        # leaves the victim dead whenever its index exceeds it, and a dead
-        # guardian stays selectable — with the scenarios' zero-width band, one
-        # such selection fails the whole secret.
+        # No count, so every registered guardian is considered — and
+        # `guardians.sh start` skips the ones already running, so in practice this
+        # starts the victim and leaves the rest alone. Passing a count instead
+        # silently leaves the victim dead whenever its index exceeds it, and a dead
+        # guardian stays selectable — with the scenarios' zero-width band, one such
+        # selection fails the whole secret.
         if ! out="$(./devnet/guardians.sh start 2>&1)"; then
             echo "$out" >&2
             fatal "restarting the guardian fleet failed"
@@ -427,10 +433,38 @@ guardian_healthy() { # guardian-NN
     fi
 }
 
-create_secret() { # manifest offset duration bump
-    node ${SDK_DIR}/examples/scenario-create.js "$1" "$2" "$3" "$4" >/dev/null
+create_secret() { # manifest offset duration bump [min:max shares]
+    node ${SDK_DIR}/examples/scenario-create.js "$1" "$2" "$3" "$4" ${5:+"$5"} >/dev/null
     jq -r '.secretId' "$1"
 }
+
+# ── Candidate-pool parking ───────────────────────────────────────────────────
+#
+# S8 needs a named guardian to be drawn rather than hoping sortition obliges, so
+# it constrains what the next reservation can draw from. guardians.sh owns the
+# mechanism and the wait; this is the suite's side of it — remembering whether a
+# park is outstanding, so the trap can restore unconditionally without the caller
+# tracking it.
+#
+# The flag is on-chain state and outlives this process. A run that dies parked
+# leaves every later run against the same chain unable to reserve anything, with
+# dev-reset the only cure, which is why the trap is installed here rather than
+# alongside the one scenario that parks.
+PARKED=0
+
+guardian_park() { # address...
+    PARKED=1   # set before the call: a failure part-way still needs restoring
+    ./devnet/guardians.sh park "$@" >/dev/null
+}
+
+guardian_restore() {
+    [ "$PARKED" = "1" ] || return 0
+    PARKED=0
+    ./devnet/guardians.sh restore >/dev/null
+}
+
+trap guardian_restore EXIT
+# ─────────────────────────────────────────────────────────────────────────────
 
 mkdir -p "$SCENARIO_DIR"
 
@@ -495,7 +529,7 @@ POOL_START=$(community_pool_total)
 info "S1: no-show slash — a healthy daemon is killed after acceptance"
 # ─────────────────────────────────────────────────────────────────────────────
 M1="$SCENARIO_DIR/s1-manifest.json"
-S1=$(create_secret "$M1" 150 100 100)
+S1=$(create_secret "$M1" 100 100 100)
 info "S1 secret: $S1 — waiting for guardian acceptance"
 wait_state "$S1" pending
 
@@ -516,7 +550,7 @@ info "S1 killed $VDIR ($VICTIM) — it will no-show"
 wait_height $((END + 2))
 SETTLE=$((END + 1))
 
-SLASH=$(block_events "$SETTLE" guardian_slashed | jq -c '.[0]')
+SLASH=$(block_events "$SETTLE" guardian_slashed | jq -c --arg id "$S1" '[.[] | select(.secret_id == $id)][0]')
 assert_eq "$(echo "$SLASH" | jq -r '.guardian_address')" "$VICTIM"                  "S1 slashed guardian is the killed daemon"
 assert_eq "$(echo "$SLASH" | jq -r '.slash_type')"       "no_reveal"                "S1 slash type"
 # Splits are floored; the remainder (including division dust) is what returns
@@ -525,7 +559,7 @@ assert_eq "$(echo "$SLASH" | jq -r '.burned')"           "$BURN1"      "S1 burn 
 assert_eq "$(echo "$SLASH" | jq -r '.to_creator')"       "$CREATOR1"   "S1 creator slice = 10% of bond (floored)"
 assert_eq "$(echo "$SLASH" | jq -r '.returned')"         "$RETURNED1"  "S1 returned = remainder of bond"
 
-DIST=$(block_events "$SETTLE" secret_rewards_distributed | jq -c '.[0]')
+DIST=$(block_events "$SETTLE" secret_rewards_distributed | jq -c --arg id "$S1" '[.[] | select(.secret_id == $id)][0]')
 assert_eq "$(echo "$DIST" | jq -r '.total_eligible')"        "4"                    "S1 four survivors split the pool"
 assert_eq "$(echo "$DIST" | jq -r '.reward_per_guardian')"   "$((POOL / 4))uveil"   "S1 per-survivor reward = pool/4"
 
@@ -585,7 +619,7 @@ ok "S2 every bond released"
 info "S3: early-reveal report — creator-as-reporter with real share evidence"
 # ─────────────────────────────────────────────────────────────────────────────
 M3="$SCENARIO_DIR/s3-manifest.json"
-S3=$(create_secret "$M3" 150 100 100)
+S3=$(create_secret "$M3" 100 100 100)
 info "S3 secret: $S3 — waiting for guardian acceptance"
 wait_state "$S3" pending
 
@@ -614,7 +648,7 @@ assert_eq "$(guardian_json "$LEAKER" | jq -r '.guardian.stake.amount')" \
 info "S3 waiting for settlement (leaker must be excluded from the pool)"
 wait_height $((END3 + 2))
 
-DIST3=$(block_events $((END3 + 1)) secret_rewards_distributed | jq -c '.[0]')
+DIST3=$(block_events $((END3 + 1)) secret_rewards_distributed | jq -c --arg id "$S3" '[.[] | select(.secret_id == $id)][0]')
 assert_eq "$(echo "$DIST3" | jq -r '.total_eligible')"      "4"                     "S3 only the four honest guardians are eligible"
 assert_eq "$(echo "$DIST3" | jq -r '.reward_per_guardian')" "$((POOL3 / 4))uveil"   "S3 per-honest-guardian reward = pool/4"
 assert_eq "$(secret_json "$S3" | jq -r '.secret.state')"    "revealed"              "S3 terminal state (leaked evidence reconstructs)"
@@ -647,7 +681,7 @@ assert_eq "$(secret_json "$S4" | jq -r '.secret.state')"  "failed"    "S4 termin
 # ─────────────────────────────────────────────────────────────────────────────
 if [ -z "${TIMEFLARE_RETENTION_BLOCKS:-}" ]; then
     info "S5: retention pruning — SKIPPED (chain running with production retention;"
-    info "    rerun with TIMEFLARE_RETENTION_BLOCKS=60 on both dev-reset and this suite)"
+    info "    rerun with TIMEFLARE_RETENTION_BLOCKS=200 on both dev-reset and this suite)"
 else
 info "S5: retention pruning — terminal secrets tombstoned after $TIMEFLARE_RETENTION_BLOCKS blocks"
 # ─────────────────────────────────────────────────────────────────────────────
@@ -797,7 +831,7 @@ info "S8: key rotation — forward-only mid-life rotation, both epochs served"
 # then rotates, restarts, and must still serve A with the retired key while a
 # post-rotation secret B is served with the new key.
 M8A="$SCENARIO_DIR/s8a-manifest.json"
-S8A=$(create_secret "$M8A" 400 100 100)
+S8A=$(create_secret "$M8A" 200 100 100)
 info "S8 secret A (pre-rotation): $S8A — waiting for guardian acceptance"
 wait_state "$S8A" pending
 
@@ -846,18 +880,21 @@ guardians_restart "$RDIR"
 # the NEW key, so the rotator accepting B proves the new-key pipeline
 # (decrypt + HMAC + confirm) end to end. Selection is sortition — retry until
 # the rotator is drawn (abandoned attempts exit via commit-timeout refunds).
-S8B=""
-for attempt in 1 2 3 4 5 6; do
-    M8B="$SCENARIO_DIR/s8b-manifest-$attempt.json"
-    CANDIDATE=$(create_secret "$M8B" 150 100 100)
-    if secret_json "$CANDIDATE" | jq -e --arg g "$ROTATOR" \
-        '.secret.selected_guardians | index($g)' >/dev/null; then
-        S8B="$CANDIDATE"
-        break
-    fi
-    info "S8 attempt $attempt: rotator not drawn for $CANDIDATE — retrying"
-done
-[ -n "$S8B" ] || fatal "S8 rotator never selected for a post-rotation secret in 6 draws"
+# B's pool is constrained to A's selected set, so the rotator is drawn with
+# certainty. The alternative — redrawing until sortition cooperates — is a
+# lottery: five of twenty-four per draw, so six attempts fail about a quarter of
+# the time, and the scenario that exercises key rotation cannot be trusted to
+# report on key rotation while a quarter of its failures mean nothing.
+A_SET=$(secret_json "$S8A" | jq -r '.secret.selected_guardians[]')
+info "S8 constraining the candidate pool to A's five for B's reservation"
+guardian_park $A_SET || fatal "S8 could not constrain the candidate pool to A's set"
+M8B="$SCENARIO_DIR/s8b-manifest.json"
+S8B=$(create_secret "$M8B" 100 100 100)
+guardian_restore || fatal "S8 could not restore the fleet after B's reservation"
+secret_json "$S8B" | jq -e --arg g "$ROTATOR" \
+    '.secret.selected_guardians | index($g)' >/dev/null \
+    || fatal "S8 B did not draw the rotator despite a pool of exactly A's five"
+ok "S8 B drew the rotator from the constrained pool (no redraw)"
 info "S8 secret B (post-rotation): $S8B — waiting for guardian acceptance"
 wait_state "$S8B" pending
 
@@ -933,7 +970,7 @@ if [ "${REBATE_COLLECTION_DRILL:-0}" = "1" ]; then
     info "S10 running the collection drill — a ~1,020-block secret, this takes a while"
     S10=$(create_secret "$M10" 150 900 1000 7:9)
 else
-    S10=$(create_secret "$M10" 150 100 100)
+    S10=$(create_secret "$M10" 100 100 100)
 fi
 [ -n "$S10" ] || fatal "S10 secret creation failed — see the scenario-create output above"
 info "S10 secret: $S10 — waiting for guardian acceptance"
@@ -1071,6 +1108,14 @@ for GADDR in $S10_GUARDIANS; do
     # Second, complementary check: of those that did reach a block, none was
     # rejected. A charged duplicate is the form the defect took on the ledger
     # that first exposed it.
+    #
+    # Scoped by HEIGHT rather than by secret, and it cannot be otherwise: a
+    # rejected message's own events are discarded with its state changes, so the
+    # transactions this is hunting carry no secret_id to filter on — only the
+    # successful accepts do, which are not the ones in question. The window is
+    # S10's lifetime, so a hit inside it belongs to S10 while the suite runs one
+    # secret at a time. Anything that overlaps secrets has to reach for the
+    # guardian log above instead, which is scoped to the secret by construction.
     QUERY=$(printf "message.action='%s' AND message.sender='%s' AND tx.height>=%s AND tx.height<=%s" \
         "$CONFIRM_MSG" "$GADDR" "$S10_FROM_HEIGHT" "$S10_TO_HEIGHT")
     RESULT=$(curl -s -G "$RPC/tx_search" --data-urlencode "query=\"$QUERY\"" --data-urlencode "per_page=50")

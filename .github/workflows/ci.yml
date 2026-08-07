@@ -150,16 +150,36 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: make guardiand-sync
+      # The two dev overrides are what make S5 and S8 run at all. Both gate on a
+      # shortened window because their real ones are ~6 months and ~30 days of
+      # blocks, and they skip rather than wait when it is unset — so without these
+      # the job silently covers nine of eleven scenarios. Set on BOTH steps: the
+      # chain reads them at start, the suite reads them to decide whether to run.
+      #
+      # dev-up forwards --unsafe-dev-overrides once per override that is set, so
+      # with both present the flag is passed twice. That is accepted.
+      #
+      # Retention also bounds S10's rebate collection window
+      # (RebateCollectionWindow clamps to the live value), so it cannot be lowered
+      # without re-deriving the drill.
+      #
+      # A test path owns bringing the chain up at the test cadence: dev-up is also
+      # the interactive path and correctly defaults to the deployment cadence in
+      # networks.json, so a job that does not say otherwise gets 6s blocks and a
+      # suite measured in hours. This must track TEST_BLOCK_TIME in
+      # make/common.mk — the two move together.
       - name: Bring up the devnet
-        # Blocks are 1s here: lifecycle waits are chain-distance in blocks, so
-        # the 6s default would take the suite past 40 minutes.
         env:
-          TIMEFLARE_BLOCK_TIME: 1s
+          TIMEFLARE_BLOCK_TIME: 200ms
+          TIMEFLARE_RETENTION_BLOCKS: '200'
+          TIMEFLARE_KEY_ROTATION_MIN_INTERVAL: '30'
           GH_TOKEN: ${{ github.token }}
         run: make dev-up
       - name: Run the lifecycle and scenario suites
         env:
-          TIMEFLARE_BLOCK_TIME: 1s
+          TIMEFLARE_BLOCK_TIME: 200ms
+          TIMEFLARE_RETENTION_BLOCKS: '200'
+          TIMEFLARE_KEY_ROTATION_MIN_INTERVAL: '30'
           GH_TOKEN: ${{ github.token }}
         run: |
           make e2e

@@ -42,7 +42,13 @@ RESET  := $(shell tput -Txterm sgr0)
 # times as long and cover nothing extra. A target that needs the test cadence
 # takes it from here rather than carrying its own default — see
 # docs/planning/done/DONE_BLOCK_TIME_CONFIGURATION_PLAN.md.
-TEST_BLOCK_TIME ?= 1s
+# 200ms, measured rather than chosen: seven consecutive full runs of the scenario
+# suite at this value, all eleven scenarios, no failures. 100ms is intermittent and
+# 50ms fails outright, and in both cases what fails is the harness rather than the
+# chain — a suite step that takes seconds overruns a window measured in blocks.
+# timeout_commit is a post-commit delay, so the real cadence lands ~30ms above this
+# (the suites measure and report it).
+TEST_BLOCK_TIME ?= 200ms
 
 # Help system configuration
 TARGET_MAX_CHAR_NUM=22
