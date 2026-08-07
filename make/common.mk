@@ -52,6 +52,11 @@ TARGET_MAX_CHAR_NUM=22
 # across files. HELP_SECTION_ORDER ('|'-separated) fixes the section order;
 # unlisted sections print afterwards in first-seen order, and targets with no
 # section land under 'Targets' — so Makefiles without markers keep a flat list.
+#
+# The '## description' line applies to the next target, and plain '#' rationale
+# comments may sit between the two: a target's description belongs at the top of
+# its comment block, above the paragraphs explaining why it does what it does.
+# Anything else — a blank line, a recipe, another target — ends the pairing.
 HELP_SECTION_ORDER ?=
 
 # Universal help target that works with any Makefile
@@ -62,18 +67,20 @@ help:
 	@echo ''
 	@echo 'Usage:'
 	@echo '  ${YELLOW}make${RESET} ${GREEN}<target>${RESET}'
-	@awk 'FNR == 1 { section = "" } \
-	/^##@ / { section = substr($$0, 5) } \
+	@awk 'FNR == 1 { section = ""; doc = "" } \
+	/^##@ / { section = substr($$0, 5); doc = ""; next } \
+	/^## / { doc = substr($$0, 4); next } \
+	/^#/ { next } \
 	/^[a-zA-Z\-\_0-9%]+:/ { \
-		if (match(lastLine, /^## (.*)/)) { \
+		if (doc != "") { \
 			helpCommand = substr($$1, 1, index($$1, ":")-1); \
-			helpMessage = substr(lastLine, RSTART + 3, RLENGTH); \
 			s = (section == "" ? "Targets" : section); \
 			if (!(s in bodies)) { seen[++n] = s } \
-			bodies[s] = bodies[s] sprintf("  ${YELLOW}%-$(TARGET_MAX_CHAR_NUM)s${RESET} ${GREEN}%s${RESET}\n", helpCommand, helpMessage); \
+			bodies[s] = bodies[s] sprintf("  ${YELLOW}%-$(TARGET_MAX_CHAR_NUM)s${RESET} ${GREEN}%s${RESET}\n", helpCommand, doc); \
 		} \
+		doc = ""; next \
 	} \
-	{ lastLine = $$0 } \
+	{ doc = "" } \
 	END { \
 		nPref = split("$(HELP_SECTION_ORDER)", pref, "|"); \
 		for (i = 1; i <= nPref; i++) emit(pref[i]); \
