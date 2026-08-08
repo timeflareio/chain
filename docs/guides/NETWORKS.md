@@ -140,14 +140,14 @@ and no host substitution:
 
 ```json
 {
-  "id": "testnet-1",
+  "id": "test-alpha",
   "label": "Public testnet",
-  "chainId": "timeflare-testnet-1",
+  "chainId": "timeflare-testnet-alpha",
   "local": false,
   "endpoints": {
-    "rpc": ["https://rpc.testnet.example.org"],
-    "rest": ["https://api.testnet.example.org"],
-    "grpc": ["grpc.testnet.example.org:443"]
+    "rpc": ["https://rpc.test-alpha.timeflare.io"],
+    "rest": ["https://rest.test-alpha.timeflare.io"],
+    "grpc": ["grpc.test-alpha.timeflare.io:443"]
   }
 }
 ```
