@@ -21,6 +21,77 @@ Runtime state (chain PID/log, guardian PIDs/logs, the local guardian registry,
 the recipient test keypair) lives in the gitignored `.devnet/` directory at the
 repo root. Chain data lives in `~/.timeflare` as always.
 
+## Useful links
+
+Once `make dev-up` is running, a browser or `curl` reaches the node on two
+ports: the REST gateway on **1317** and the CometBFT RPC on **26657**. Pipe
+through `jq` for anything larger than a status check. Replace `{secret_id}`,
+`{address}` and `{height}` with real values; every collection route accepts
+`?pagination.limit=` and `?pagination.key=`.
+
+### Secrets module (REST, `http://localhost:1317`)
+
+| Link | Shows |
+|---|---|
+| [/timeflare/secrets/v1/secrets](http://localhost:1317/timeflare/secrets/v1/secrets) | every secret, assembled (metadata + assignments + reveals) |
+| [/timeflare/secrets/v1/secrets/pending](http://localhost:1317/timeflare/secrets/v1/secrets/pending) | secrets in their active reveal phase |
+| `/timeflare/secrets/v1/secrets/creator/{address}` | secrets published by one creator |
+| `/timeflare/secrets/v1/secret/{secret_id}` | one secret, the full assembled view |
+| `/timeflare/secrets/v1/secret/{secret_id}/meta` | slim metadata only — no share or reveal data |
+| `/timeflare/secrets/v1/secret/{secret_id}/assignments` | per-guardian assignment status |
+| `/timeflare/secrets/v1/secret/{secret_id}/reveals` | revealed shares, what a recipient reconstructs from |
+| `/timeflare/secrets/v1/secret/{secret_id}/share/{address}` | one guardian's encrypted share |
+| `/timeflare/secrets/v1/secret/{secret_id}/payload` | the stored payload ciphertext (C) |
+| `/timeflare/secrets/v1/secret/{secret_id}/tombstone` | the permanent record of a pruned secret |
+| [/timeflare/secrets/v1/hints/1](http://localhost:1317/timeflare/secrets/v1/hints/1) | detection hints at or after a height — the discovery-scan cursor |
+| [/timeflare/secrets/v1/guardians](http://localhost:1317/timeflare/secrets/v1/guardians) | the guardian registry: stake, availability window, bond factor |
+| `/timeflare/secrets/v1/guardian/{address}` | one guardian's record |
+| `/timeflare/secrets/v1/guardian/{address}/key-history` | that guardian's append-only key-epoch history |
+
+### Chain state (REST, `http://localhost:1317`)
+
+| Link | Shows |
+|---|---|
+| [/cosmos/base/tendermint/v1beta1/blocks/latest](http://localhost:1317/cosmos/base/tendermint/v1beta1/blocks/latest) | the latest block — the quickest read of current height |
+| `/cosmos/base/tendermint/v1beta1/blocks/{height}` | one block by height |
+| [/cosmos/base/tendermint/v1beta1/node_info](http://localhost:1317/cosmos/base/tendermint/v1beta1/node_info) | chain id, app version, node identity |
+| [/cosmos/base/tendermint/v1beta1/syncing](http://localhost:1317/cosmos/base/tendermint/v1beta1/syncing) | whether the node is still catching up |
+| [/cosmos/base/tendermint/v1beta1/validatorsets/latest](http://localhost:1317/cosmos/base/tendermint/v1beta1/validatorsets/latest) | the current validator set and voting power |
+| `/cosmos/bank/v1beta1/balances/{address}` | an account's uveil balance |
+| [/cosmos/bank/v1beta1/supply](http://localhost:1317/cosmos/bank/v1beta1/supply) | total supply — watch it fall as fees burn |
+| `/cosmos/auth/v1beta1/accounts/{address}` | account number and sequence (signing debug) |
+| [/cosmos/staking/v1beta1/validators](http://localhost:1317/cosmos/staking/v1beta1/validators) | validator records |
+| [/cosmos/staking/v1beta1/pool](http://localhost:1317/cosmos/staking/v1beta1/pool) | bonded and unbonded totals |
+| [/cosmos/gov/v1/proposals](http://localhost:1317/cosmos/gov/v1/proposals) | governance proposals — used by the upgrade rehearsal |
+| [/cosmos/upgrade/v1beta1/current_plan](http://localhost:1317/cosmos/upgrade/v1beta1/current_plan) | the scheduled upgrade, if one is set |
+| [/cosmos/distribution/v1beta1/params](http://localhost:1317/cosmos/distribution/v1beta1/params) | fee-distribution parameters |
+| [/cosmos/slashing/v1beta1/params](http://localhost:1317/cosmos/slashing/v1beta1/params) | validator slashing parameters |
+
+### CometBFT RPC (`http://localhost:26657`)
+
+| Link | Shows |
+|---|---|
+| [/status](http://localhost:26657/status) | latest height, block time, node id, catching-up flag |
+| [/health](http://localhost:26657/health) | liveness — empty result means healthy |
+| [/abci_info](http://localhost:26657/abci_info) | app version and last committed app hash |
+| [/block](http://localhost:26657/block) | the latest block; `?height={height}` for a specific one |
+| `/block_results?height={height}` | begin/end-block and transaction **events** — where guardian payouts, burns and slashes are asserted |
+| [/validators](http://localhost:26657/validators) | consensus validator set at the latest height |
+| [/net_info](http://localhost:26657/net_info) | peers — the multi-validator compose stack is visible here |
+| [/consensus_state](http://localhost:26657/consensus_state) | the round-by-round state of the current height |
+| [/unconfirmed_txs](http://localhost:26657/unconfirmed_txs) | the mempool |
+| `/tx?hash=0x{hash}` | one transaction and its result |
+| `/tx_search?query="tx.height>1"` | search transactions by event query |
+| [/](http://localhost:26657/) | the RPC's own index of every route it serves |
+
+Guardians expose their own ports rather than going through the node: guardian
+*i* serves health on `21000 + i` and Prometheus metrics on `21100 + i`, so
+[localhost:21000/health](http://localhost:21000/health) and
+[localhost:21100/metrics](http://localhost:21100/metrics) are the first
+guardian. On the compose stack every port carries
+`TIMEFLARE_DOCKER_PORT_OFFSET`, and validator *i*'s RPC is published at
+`26657 + 10i`.
+
 ## Compose devnet (containers)
 
 An opt-in parallel to the native devnet — same lifecycle verbs, prefixed
