@@ -27,7 +27,7 @@ make dev-status
 make e2e
 
 # Monitor secrets
-node typescript-sdk/examples/monitor-secrets.js list
+node devnet/e2e/monitor-secrets.js --recipient-keypair .devnet/recipient-keypair.json
 ```
 
 ## 🏗️ Architecture Overview
@@ -257,9 +257,9 @@ timeflared query secrets show "$SECRET_ID" | grep -E "rebate_amount|rebate_colle
 # nothing can top it up.
 timeflared query bank balances tmflr1g6ct2qh5jtrew322yuumdehgwnk9pcexzzz3d2
 
-# Collection is commit–reveal. Derive both values with the SDK helper (it reads
-# the secret's hint and the devnet recipient key):
-node typescript-sdk/examples/rebate-proof.js "$SECRET_ID" "$(timeflared keys show recipient -a)"
+# Collection is commit–reveal. Derive both values with the driver's helper (it
+# reads the secret's hint and the devnet recipient key):
+node devnet/e2e/rebate-proof.js "$SECRET_ID" "$(timeflared keys show recipient -a)"
 # -> {"proof":"<hex>","commitment":"<hex>","rebate":"<uveil>","collected":false}
 
 # Step 1: commit. Binds the proof to this address without revealing it.
@@ -328,21 +328,12 @@ timeflared query bank total --denom uveil  # Should decrease (tokens burned)
 
 ### **End-to-End Client Library Test**
 ```bash
-# Test complete workflow using client library
-cd typescript-sdk/examples
+# Full three-phase lifecycle through the SDK, against the running devnet.
+# Installs the e2e driver's pinned dependencies (devnet/e2e) on first run.
+make e2e
 
-# Install dependencies
-npm install
-
-# Run automated test
-npx ts-node run-with-local-chain.ts
-
-# Expected output:
-# ✅ Connected to local chain
-# ✅ Guardian automation detected
-# ✅ Secret published successfully
-# ✅ Guardians reveal shares automatically
-# ✅ Secret reconstructed and retrieved
+# Expected output ends with:
+# ✅ FULL LIFECYCLE VERIFIED: create → distribute → accept → reveal → reconstruct → decrypt → discover
 ```
 
 ### **👮 Guardian Network Integration**
@@ -508,11 +499,11 @@ timeflared start --log_level debug
 
 ### **Client Library Issues**
 ```bash
-# Check Node.js dependencies
-cd typescript-sdk && npm install
+# Reinstall the e2e driver's pinned dependencies
+rm -rf devnet/e2e/node_modules && make e2e-deps
 
-# Run with debug logging
-DEBUG=* npx ts-node run-with-local-chain.ts
+# Re-run the lifecycle with the driver's progress output
+make e2e
 ```
 
 ## 📝 Test Checklist
@@ -536,7 +527,7 @@ make start
 make dev-up
 
 # Test end-to-end
-cd typescript-sdk/examples && npx ts-node run-with-local-chain.ts
+make e2e
 
 # Monitor
 ./devnet/guardians.sh status

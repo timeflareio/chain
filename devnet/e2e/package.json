@@ -1,0 +1,14 @@
+{
+  "name": "@timeflare/devnet-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The devnet's e2e client driver — the JavaScript half of the chain's e2e harness, consuming the released timeflare-sdk dist tarball at a pinned version",
+  "dependencies": {
+    "@cosmjs/encoding": "^0.39.0",
+    "@timeflareio/crypto": "https://github.com/timeflareio/crypto/releases/download/v0.0.2/timeflare-crypto-wasm-v0.0.2.tgz",
+    "@timeflareio/typescript-sdk": "https://github.com/timeflareio/typescript-sdk/releases/download/v0.0.7/timeflare-sdk-v0.0.7.tgz"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

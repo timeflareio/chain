@@ -160,19 +160,13 @@ docker-status:
 
 # Host-side e2e against the compose stack: same suites as the native devnet,
 # pointed at the stack's published ports and the exported genesis keyring.
-# TIMEFLARE_HOME isolates george + genesis keyring from any native devnet.
-#
-# SDK_DIR is passed explicitly. The suites are driven by the SDK's examples,
-# which come from the pinned release now rather than a sibling directory, and the
-# scenario script defaults to .devnet/sdk only when nothing tells it otherwise —
-# a default is not the same as the value this stack actually synced.
+# TIMEFLARE_HOME isolates the test user + genesis keyring from any native devnet.
 DOCKER_E2E_ENV := TIMEFLARE_HOME=$(CURDIR)/$(DOCKER_HOME) \
 	RECIPIENT_KEYPAIR=$(CURDIR)/$(DOCKER_DEVNET_DIR)/recipient-keypair.json \
-	SDK_DIR=$(SDK_DIR) \
 	GUARDIAN_CONTROL=docker
 
 ## run the full lifecycle e2e (host-side) against the compose devnet
-docker-e2e: sdk-sync
+docker-e2e: e2e-deps
 	@if ! curl -s --max-time 2 $(DOCKER_RPC)/status >/dev/null 2>&1; then \
 		echo "❌ Compose devnet not reachable — start it with 'make docker-up'"; exit 1; fi
 	@$(DOCKER_E2E_ENV) $(USER_SETUP) fund
@@ -205,7 +199,7 @@ e2e-full: go-install
 	exit $$status
 
 ## run the failure-path scenario suite (host-side) against the compose devnet
-docker-e2e-scenarios: sdk-sync
+docker-e2e-scenarios: e2e-deps
 	@if ! curl -s --max-time 2 $(DOCKER_RPC)/status >/dev/null 2>&1; then \
 		echo "❌ Compose devnet not reachable — start it with 'make docker-up'"; exit 1; fi
 	@$(DOCKER_E2E_ENV) $(USER_SETUP) fund

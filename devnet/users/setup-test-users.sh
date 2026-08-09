@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # Simple user setup for Timeflare testing
-# Creates and funds the 'george' user account
+# Creates and funds the 'user' test account
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/../lib/common-utils.sh"
 
-USER_NAME="george"
+# The e2e driver's lib.js loads this key by the same name — the two must agree.
+USER_NAME="${TIMEFLARE_USER_NAME:-user}"
 CHAIN_ID="${CHAIN_ID:-timeflare-test}"
 USER_FUNDING="25000000000"  # 25,000 VEIL
 # TIMEFLARE_HOME redirects every path (user keyring + genesis keyring) so the
@@ -158,7 +159,7 @@ case "${1:-help}" in
         echo "Usage: $0 [fund|status|cleanup]"
         echo ""
         echo "Commands:"
-        echo "  fund    - Create and fund the george user"
+        echo "  fund    - Create and fund the test user"
         echo "  status  - Show user status and balance"
         echo "  cleanup - Remove user key from keyring"
         echo ""

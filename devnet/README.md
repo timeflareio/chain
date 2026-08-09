@@ -132,10 +132,11 @@ devnet/
 │   ├── generate-genesis-keys.sh   # genesis pool accounts (run once per env)
 │   ├── setup-chain.sh             # init chain: genesis, accounts, dev params
 │   └── upgrade-test.sh            # rehearse a software upgrade via governance
+├── e2e/                   # the e2e client driver — a private package pinning the SDK dist tarball (see below)
 ├── fund.sh                # THE funding primitive: bootstrapping pool → any address (see below)
 ├── guardians.sh           # register/start/stop/status/logs/clean for local guardians
 └── users/
-    └── setup-test-users.sh        # create and fund the 'george' test user
+    └── setup-test-users.sh        # create and fund the 'user' test account
 ```
 
 ## Funding any address (`fund.sh` / `make faucet`)
@@ -210,9 +211,9 @@ to pick up the dev parameters.
 
 ## End-to-end test
 
-`make e2e` runs the SDK's `examples/secret-lifecycle.js` against the running
-devnet and verifies the **complete** lifecycle strictly (non-zero exit on any
-stage failure):
+`make e2e` runs the driver's `devnet/e2e/secret-lifecycle.js` against the
+running devnet and verifies the **complete** lifecycle strictly (non-zero exit
+on any stage failure):
 
 1. Secret creation and share distribution (three-phase commit)
 2. Guardian acceptance up to the threshold
@@ -234,11 +235,12 @@ asserted to the exact uveil via `block_results`/`tx` events. Run it against a
 fresh fast-block devnet (`TIMEFLARE_BLOCK_TIME=2s make dev-reset`) — the two
 reveal-window waits take ~20 minutes at the default 6-second blocks.
 
-**Where the examples come from.** They are not in this repository. `make e2e`
-and `make e2e-scenarios` run the examples from the `timeflareio/typescript-sdk`
-release pinned in `devnet/versions.env`, which `make sdk-sync` unpacks to
-`.devnet/sdk/`. `SDK_DIR=/path/to/typescript-sdk` points at a working tree
-instead, for cross-repo development. The related examples
+**The e2e driver.** `make e2e` and `make e2e-scenarios` run the driver scripts
+in `devnet/e2e/` — a private package whose dependencies (the released SDK dist
+tarball and the WASM crypto bundle, by release-asset URL) are pinned in its
+`package.json` and lockfile, installed by `make e2e-deps`.
+`SDK_DIR=/path/to/typescript-sdk` substitutes a built SDK working tree for the
+library, for cross-repo development. The inspection utilities
 (`monitor-secrets.js`, `generate-keypair.js`) live there too.
 
 **The guardian maths.** The protocol selects **exactly** `max_shares` guardians

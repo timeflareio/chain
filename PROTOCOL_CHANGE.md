@@ -93,8 +93,9 @@ re-fetches the *old* artefact and reports success.
 
 **6. Point the chain's devnet at what you just released**
 
-- [ ] set `GUARDIAN_VERSION` and `SDK_VERSION` in `devnet/versions.env` to the
-      releases cut in steps 3 and 4
+- [ ] set `GUARDIAN_VERSION` in `devnet/versions.env` to the release cut in
+      step 3, and point `devnet/e2e/package.json` at the SDK dist tarball from
+      step 4 (`npm install` in `devnet/e2e` refreshes the lockfile)
 
 This step is not bookkeeping, and skipping it is the most plausible way to run
 this whole checklist and prove nothing. Those two pins are what step 7 actually
