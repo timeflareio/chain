@@ -9,7 +9,7 @@ the make targets:
 
 ```bash
 make doctor        # verify your toolchain (go, rust, wasm-pack, node, buf, jq)
-make dev-up        # chain + 24 guardians + funded test user (GUARDIAN_COUNT=n to change)
+make dev-up        # chain + 24 guardians (GUARDIAN_COUNT=n to change)
 make dev-status    # chain height + guardian process/health overview
 make e2e           # run the full secret lifecycle against the devnet
 make e2e-scenarios # failure-path suite: no-show slash, mid-hold cancel, early-reveal report

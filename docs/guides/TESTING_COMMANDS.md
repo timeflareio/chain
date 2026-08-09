@@ -8,7 +8,7 @@ Comprehensive testing commands for the Timeflare blockchain with automated 👮 
 ```bash
 make doctor    # verify toolchain
 make build     # build timeflared, guardiand, and the TypeScript SDK
-make dev-up    # start chain + 5 guardians + funded test user
+make dev-up    # start chain + 5 guardians
 ```
 
 ### **2. Manage the 👮 Guardian Network**

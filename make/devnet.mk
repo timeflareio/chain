@@ -1,5 +1,5 @@
 # Local Devnet Driver
-# Single-command local development environment: chain + guardians + funded users.
+# Single-command local development environment: chain + guardians.
 #
 # Runtime state (PIDs, logs) lives in .devnet/ which is gitignored.
 # Chain data lives in ~/.timeflare as before.
@@ -204,7 +204,7 @@ guardiand-sync:
 	echo "✅ guardiand + guardianctl $(GUARDIAN_VERSION) ready"
 
 
-## start the full local devnet (chain + $(GUARDIAN_COUNT) guardians + funded test user)
+## start the full local devnet (chain + $(GUARDIAN_COUNT) guardians)
 dev-up: go-install guardiand-sync
 	@mkdir -p $(DEVNET_DIR)
 	@if [ ! -d "$$HOME/.timeflare/config" ]; then \
@@ -233,8 +233,6 @@ dev-up: go-install guardiand-sync
 	@$(GUARDIAN_MANAGER) register $(GUARDIAN_COUNT)
 	@echo "👮 Starting $(GUARDIAN_COUNT) guardians..."
 	@$(GUARDIAN_MANAGER) start $(GUARDIAN_COUNT)
-	@echo "👤 Funding test user..."
-	@$(USER_SETUP) fund
 	@echo ""
 	@echo "🚀 Devnet is up. Useful commands:"
 	@echo "   make dev-status   — chain and guardian overview"
