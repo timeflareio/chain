@@ -63,14 +63,13 @@
 #                               of the run (community_tax = 0 holds)
 #
 # Requires: make dev-up (chain + guardians), funded user, recipient keypair,
-# built SDK. Run via `make e2e-scenarios`.
+# installed driver dependencies (make e2e-deps). Run via `make e2e-scenarios`.
 
 set -euo pipefail
 
-# The SDK examples this suite drives live in their own repository now. SDK_DIR
-# says where they are: a working tree, or a directory unpacked from a pinned SDK
-# release. The Makefile passes it; this default keeps the script runnable alone.
-SDK_DIR="${SDK_DIR:-.devnet/sdk}"
+# The driver scripts this suite calls live beside it in devnet/e2e, resolved
+# from this script's own location so the suite stays runnable from any cwd.
+E2E_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/e2e" && pwd)"
 
 # How long to wait for a restarted guardian to report healthy.
 #
@@ -261,12 +260,12 @@ tx_events() { # hash type
 tx_height() { curl -s "$RPC/tx?hash=0x$1" | jq -r '.result.height'; }
 tx_code()   { curl -s "$RPC/tx?hash=0x$1" | jq -r '.result.tx_result.code'; }
 
-user_tx() { # subcommand args... — signs as george, returns txhash after inclusion
+user_tx() { # subcommand args... — signs as the devnet test user, returns txhash after inclusion
     local passphrase out submit hash code
     passphrase=$(cat "$USER_PASSPHRASE_FILE")
     # 'gas estimate: N' precedes the JSON on the same stream — parse the last line
     out=$(echo "$passphrase" | timeflared tx secrets "$@" \
-        --from george --keyring-backend file --keyring-dir "$USER_KEYRING" \
+        --from user --keyring-backend file --keyring-dir "$USER_KEYRING" \
         --chain-id "$CHAIN_ID" --gas auto --gas-adjustment 1.5 \
         --gas-prices 0.1uveil \
         --node "$RPC" -o json --yes 2>&1) || fatal "tx submission failed: $out"
@@ -291,7 +290,7 @@ user_tx_expect_fail() { # expected_log_substring subcommand args... — asserts 
     # With --gas auto the message is simulated pre-broadcast, so an invalid
     # cancel typically fails right here — assert the reason either way.
     if ! out=$(echo "$passphrase" | timeflared tx secrets "$@" \
-        --from george --keyring-backend file --keyring-dir "$USER_KEYRING" \
+        --from user --keyring-backend file --keyring-dir "$USER_KEYRING" \
         --chain-id "$CHAIN_ID" --gas auto --gas-adjustment 1.5 \
         --gas-prices 0.1uveil \
         --node "$RPC" -o json --yes 2>&1); then
@@ -434,7 +433,7 @@ guardian_healthy() { # guardian-NN
 }
 
 create_secret() { # manifest offset bump [min:max shares]
-    node ${SDK_DIR}/examples/scenario-create.js "$1" "$2" "$3" ${4:+"$4"} >/dev/null
+    node "$E2E_DIR/scenario-create.js" "$1" "$2" "$3" ${4:+"$4"} >/dev/null
     jq -r '.secretId' "$1"
 }
 
@@ -773,10 +772,10 @@ ok "S6b outstanding validator rewards are positive ($OUT1 uveil)"
 
 # Rewards must GROW when another fee is paid: send a fee-bearing tx and
 # re-check after its split lands.
-GEORGE_PASS=$(cat "$USER_PASSPHRASE_FILE")
-GEORGE_ADDR=$(echo "$GEORGE_PASS" | timeflared keys show george -a --keyring-backend file --keyring-dir "$USER_KEYRING")
-SEND_OUT=$(echo "$GEORGE_PASS" | timeflared tx bank send george "$GEORGE_ADDR" 1uveil \
-    --from george --keyring-backend file --keyring-dir "$USER_KEYRING" \
+USER_PASS=$(cat "$USER_PASSPHRASE_FILE")
+USER_ADDR=$(echo "$USER_PASS" | timeflared keys show user -a --keyring-backend file --keyring-dir "$USER_KEYRING")
+SEND_OUT=$(echo "$USER_PASS" | timeflared tx bank send user "$USER_ADDR" 1uveil \
+    --from user --keyring-backend file --keyring-dir "$USER_KEYRING" \
     --chain-id "$CHAIN_ID" --gas 200000 --fees 20000uveil \
     --node "$RPC" -o json --yes 2>&1 | tail -1)
 SEND_HASH=$(echo "$SEND_OUT" | jq -r '.txhash // empty')
@@ -1014,9 +1013,9 @@ else
     POOL_BEFORE=$(timeflared query bank balances "$REBATE_POOL_ADDR" -o json \
         | jq -r '(.balances[]? | select(.denom == "uveil") | .amount) // "0"')
 
-    COLLECTOR=$(echo "$(cat "$USER_PASSPHRASE_FILE")" | timeflared keys show george -a \
+    COLLECTOR=$(echo "$(cat "$USER_PASSPHRASE_FILE")" | timeflared keys show user -a \
         --keyring-backend file --keyring-dir "$USER_KEYRING")
-    PROOF_JSON=$(node ${SDK_DIR}/examples/rebate-proof.js "$S10" "$COLLECTOR") \
+    PROOF_JSON=$(node "$E2E_DIR/rebate-proof.js" "$S10" "$COLLECTOR") \
         || fatal "S10 could not derive the recipiency proof"
     PROOF=$(echo "$PROOF_JSON" | jq -r '.proof')
     COMMITMENT=$(echo "$PROOF_JSON" | jq -r '.commitment')
@@ -1029,7 +1028,7 @@ else
     # --gas auto simulation rather than at delivery; either is the handler
     # rejecting it.
     UNCOMMITTED_OUT=$(echo "$(cat "$USER_PASSPHRASE_FILE")" | timeflared tx secrets recipient-collect-rebate \
-        "$S10" "$PROOF" --from george --keyring-backend file --keyring-dir "$USER_KEYRING" \
+        "$S10" "$PROOF" --from user --keyring-backend file --keyring-dir "$USER_KEYRING" \
         --chain-id "$CHAIN_ID" --gas auto --gas-adjustment 1.5 --gas-prices 0.1uveil \
         --node "$RPC" -o json --yes 2>&1 || true)
     echo "$UNCOMMITTED_OUT" | grep -q "commit first" \
@@ -1154,7 +1153,7 @@ fi
 info "S11: funded claim kit — a never-funded address is brought onto the chain"
 # ─────────────────────────────────────────────────────────────────────────────
 # The one claim no other scenario can make. Every other path in this suite
-# transacts as `george`, a pre-funded devnet account — which is exactly how the
+# transacts as `user`, the suite's funded test account — which is exactly how the
 # bootstrapping defect survived into a release: a wallet that has never RECEIVED
 # anything has no auth account, so it cannot sign, so it cannot collect the
 # rebate the protocol credited it. A funded claim kit carries a single-use
@@ -1162,7 +1161,7 @@ info "S11: funded claim kit — a never-funded address is brought onto the chain
 # See docs/planning/done/DONE_WALLET_BOOTSTRAPPING_PLAN.md §3.
 S11_STATE="$SCENARIO_DIR/s11-courier.json"
 S11_SETUP=$(COURIER_DRILL_STATE="$S11_STATE" \
-    node ${SDK_DIR}/examples/courier-bootstrap.mjs setup 2>&1) \
+    node "$E2E_DIR/courier-bootstrap.mjs" setup 2>&1) \
     || fatal "S11 courier setup failed: $S11_SETUP"
 S11_COURIER=$(echo "$S11_SETUP" | jq -r '.courier')
 S11_SEED=$(echo "$S11_SETUP" | jq -r '.seed')
@@ -1175,15 +1174,15 @@ assert_eq "$(echo "$S11_SETUP" | jq -r '.kitVersion')" "2" "S11 funded kit is ve
 
 info "S11 seeding courier $S11_COURIER with $S11_SEED uveil"
 S11_PASS=$(cat "$USER_PASSPHRASE_FILE")
-S11_FUND=$(echo "$S11_PASS" | timeflared tx bank send george "$S11_COURIER" "${S11_SEED}uveil" \
-    --from george --keyring-backend file --keyring-dir "$USER_KEYRING" \
+S11_FUND=$(echo "$S11_PASS" | timeflared tx bank send user "$S11_COURIER" "${S11_SEED}uveil" \
+    --from user --keyring-backend file --keyring-dir "$USER_KEYRING" \
     --chain-id "$CHAIN_ID" --gas auto --gas-adjustment 1.5 --gas-prices 0.1uveil \
     --node "$RPC" -o json --yes 2>&1 | tail -1)
 assert_eq "$(echo "$S11_FUND" | jq -r '.code // "no-code"')" "0" "S11 courier funding accepted"
 wait_height $(( $(height) + 2 ))
 
 if COURIER_DRILL_STATE="$S11_STATE" \
-   node ${SDK_DIR}/examples/courier-bootstrap.mjs verify; then
+   node "$E2E_DIR/courier-bootstrap.mjs" verify; then
     ok "S11 the swept recipient can sign — bootstrapping works end to end"
 else
     fatal "S11 a never-funded recipient could NOT be brought onto the chain"

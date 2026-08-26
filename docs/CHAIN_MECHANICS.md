@@ -1138,10 +1138,39 @@ predicate and the equal-probability claim resting on it.
 
 ## Open Defects & Cleanup Notes
 
-*No known defect is open.* Likely bugs and unfinished edges are recorded here,
-each needing a reproducing test or a ruling before it is fixed. Concerns that are
-reachable but unresolved live under Security Observations above; costs
-consciously accepted live in [Accepted Trade-offs](#accepted-trade-offs).
+Likely bugs and unfinished edges are recorded here, each needing a reproducing
+test or a ruling before it is fixed. Concerns that are reachable but unresolved
+live under Security Observations above; costs consciously accepted live in
+[Accepted Trade-offs](#accepted-trade-offs).
+
+### Open
+
+#### 1. A settlement left a bond locked on a slashed guardian — once, unreproduced
+
+Observed 9 August 2026 while verifying the e2e driver relocation: S3's final
+assertion — "nothing stranded on the leaker" — failed once, with 592 uveil
+still locked on the leaker after settlement. The run had `make e2e` preceding
+the suite on the same chain, a 1-second cadence, and the retention and rotation
+overrides set. Three full re-runs the same day — with the relocated driver and
+with the released-bundle driver, with and without the preceding lifecycle run —
+passed 74/74, each ending with a clean lock scan across all 24 guardians. The
+trigger is therefore roster- or sequence-dependent: the devnet test key is
+regenerated at every reset, so guardian selection re-rolls on every run. The
+stranded amount matched no single frozen bond in that run's manifests (S1–S3
+bonds were 404/509/604/761 uveil), so it is not simply "one release skipped" of
+a known bond. Needs a reproducing test before any fix — and note defect 2,
+which sits exactly where this would have been caught at its source.
+
+#### 2. S2's bond-release check iterates a null roster and passes vacuously
+
+`active_assignments` on a cancelled secret comes back null, so S2's
+per-guardian release loop (`for g in $(… .secret.active_assignments[])`)
+iterates nothing, emits a `jq` error on stderr, and prints its ✓
+unconditionally — the check passes on every run whether or not the five bonds
+were actually released. Same family as the closed items below: the suite
+asserts the chain, and nothing asserts the suite. The roster is available in
+the scenario manifest (`selectedGuardians`), which does not depend on
+post-cancellation state.
 
 ### Closed: three defects in the scenario suite itself
 

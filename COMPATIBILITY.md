@@ -86,8 +86,9 @@ plainly:
   module for this repository and the guardian, and the `@timeflareio/crypto` npm
   package (the WASM bundle) for the SDK. Both numbers are recorded when they
   differ.
-- **SDK** — `timeflareio/typescript-sdk`. The chain's devnet pins this in
-  `devnet/versions.env` too: its examples drive the e2e suites.
+- **SDK** — `timeflareio/typescript-sdk`. The chain's devnet pins its dist
+  tarball in `devnet/e2e/package.json` + lockfile: the e2e driver runs
+  against it.
 - **Mobile** — `timeflareio/mobile-client`. Never tagged: it ships to stores, so
   nothing downstream pins it. The column records the SDK release it vendors,
   which is the only version anyone else can act on.

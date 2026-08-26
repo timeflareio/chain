@@ -38,3 +38,6 @@ third_party/
 # repository content — the devnet is machine-global, so the lock says who is
 # driving it right now.
 chain.lock
+
+# The e2e driver installs its pinned dependencies here (make e2e-deps).
+devnet/e2e/node_modules/

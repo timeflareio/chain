@@ -57,75 +57,48 @@ DEVNET_PATH       := PATH="$(CURDIR)/$(DEVNET_BIN):$$PATH"
 GUARDIAN_MANAGER  := $(DEVNET_PATH) ./devnet/guardians.sh
 CHAIN_IDENTITY    := ./devnet/verify-chain-identity.sh
 USER_SETUP        := ./devnet/users/setup-test-users.sh
-# The e2e harness is driven by the TypeScript SDK's examples. The SDK lives in
-# its own repository now, so SDK_DIR points at whatever provides them: a working
-# tree today, and a directory unpacked from the pinned SDK release once one
-# exists (see sdk-sync).
-SDK_DIR           ?= $(DEVNET_DIR)/sdk
-E2E_TEST           = $(SDK_DIR)/examples/secret-lifecycle.js
-E2E_KEYGEN         = $(SDK_DIR)/examples/generate-keypair.js
+# The e2e client driver lives at devnet/e2e — a private package consuming the
+# released SDK dist tarball at the version pinned in its package.json and
+# lockfile. SDK_DIR substitutes a BUILT SDK working tree for the library during
+# cross-repo work (see e2e-deps); the driver scripts themselves always run from
+# this repository.
+E2E_DIR           := devnet/e2e
+E2E_TEST           = $(E2E_DIR)/secret-lifecycle.js
+E2E_KEYGEN         = $(E2E_DIR)/generate-keypair.js
+SDK_DIR           ?=
 RECIPIENT_KEYPAIR := $(DEVNET_DIR)/recipient-keypair.json
 
 ##@ Dev loop
 
-# Fetches the EXAMPLES bundle specifically. The SDK publishes two tarballs, and
-# the other one — timeflare-sdk-<tag>.tgz — is dist-only and byte-deterministic
-# for consumers that vendor the package. It carries no examples/, so a '*.tgz'
-# glob would match it and leave the harness with nothing to run.
-# The examples are JavaScript with real runtime dependencies (cosmjs, bech32,
-# @noble/hashes). The release bundle ships source, build output and WASM — not
-# node_modules, which would be large and platform-specific — so they have to be
-# installed before anything can run.
+## install the e2e driver's pinned dependencies (SDK_DIR=<path> substitutes a built SDK working tree)
 #
-# `npm ci` when a lockfile is present, which is deterministic and what a release
-# bundle should carry. SDK v0.0.1 does not include one, so `npm install` is the
-# fallback; it resolves the same declared ranges, just without the exact-tree
-# guarantee. An SDK release that bundles its lockfile removes the fallback.
-sdk-install:
-	@set -e; \
-	if [ -f "$(SDK_DIR)/package-lock.json" ]; then \
-		echo "📦 Installing SDK dependencies (npm ci — deterministic)"; \
-		( cd "$(SDK_DIR)" && npm ci --omit=dev --silent ); \
+# The driver's dependencies — the SDK dist tarball and the WASM crypto bundle,
+# both by release-asset URL — are pinned in devnet/e2e/package.json with the
+# lockfile's integrity hashes making the pin verifiable, so `npm ci` is all a
+# pinned run ever needs.
+#
+# SDK_DIR swaps in a built SDK working tree for cross-repo development: npm ci
+# first (a clean pinned tree), then a --no-save file: install, which symlinks
+# the working tree over the pinned package. The symlink is also the tell — the
+# next pinned run sees it and re-runs npm ci, so an override cannot leak into a
+# verification run.
+e2e-deps:
+	@set -e; cd $(E2E_DIR); \
+	if [ -n "$(SDK_DIR)" ]; then \
+		if [ ! -f "$(abspath $(SDK_DIR))/dist/index.js" ]; then \
+			echo "❌ $(SDK_DIR) has no dist/index.js — build the SDK working tree first"; exit 1; \
+		fi; \
+		npm ci --omit=dev --silent --no-audit --no-fund; \
+		npm install --no-save --omit=dev --silent --no-audit --no-fund "file:$(abspath $(SDK_DIR))"; \
+		echo "📦 e2e driver using the SDK working tree at $(SDK_DIR) (the next pinned run restores the release)"; \
+	elif [ ! -d node_modules ] \
+		|| [ -L node_modules/@timeflareio/typescript-sdk ] \
+		|| [ package-lock.json -nt node_modules/.package-lock.json ]; then \
+		npm ci --omit=dev --silent --no-audit --no-fund; \
+		echo "📦 e2e driver dependencies installed (pinned)"; \
 	else \
-		echo "📦 Installing SDK dependencies (npm install — the bundle carries no lockfile)"; \
-		( cd "$(SDK_DIR)" && npm install --omit=dev --silent --no-audit --no-fund ); \
-	fi; \
-	node -e "require('$(CURDIR)/$(SDK_DIR)/node_modules/bech32')" 2>/dev/null || { \
-		echo "❌ dependencies did not install — the examples will not run"; exit 1; }; \
-	echo "✅ SDK dependencies installed"
-
-## make the SDK examples available to the e2e harness (SDK_DIR=<path> for a working tree)
-sdk-sync:
-	@set -e; \
-	if [ -d "$(SDK_DIR)/examples" ] && [ -d "$(SDK_DIR)/node_modules" ]; then \
-		echo "📦 Using SDK at $(SDK_DIR)"; exit 0; \
-	fi; \
-	if [ -d "$(SDK_DIR)/examples" ] && [ ! -d "$(SDK_DIR)/node_modules" ]; then \
-		echo "📦 SDK present at $(SDK_DIR) but dependencies are not installed"; \
-		$(MAKE) --no-print-directory sdk-install SDK_DIR="$(SDK_DIR)"; \
-		exit 0; \
-	fi; \
-	if [ -z "$(SDK_VERSION)" ]; then \
-		echo "❌ No SDK available for the e2e harness."; \
-		echo ""; \
-		echo "   SDK_VERSION is unset in devnet/versions.env, so there is no release"; \
-		echo "   to fetch the examples bundle from."; \
-		echo ""; \
-		echo "   Set it to a timeflareio/typescript-sdk tag, or point at a working"; \
-		echo "   tree for cross-repo work:"; \
-		echo "     make e2e SDK_DIR=/path/to/typescript-sdk"; \
-		exit 1; \
-	fi; \
-	echo "📦 Fetching SDK $(SDK_VERSION) from timeflareio/typescript-sdk"; \
-	mkdir -p "$(SDK_DIR)"; \
-	tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
-	gh release download "$(SDK_VERSION)" --repo timeflareio/typescript-sdk \
-		--pattern 'timeflare-sdk-examples-*.tar.gz' --dir "$$tmp"; \
-	tar -xzf "$$tmp"/timeflare-sdk-examples-*.tar.gz -C "$(SDK_DIR)" --strip-components=1; \
-	test -f "$(SDK_DIR)/examples/secret-lifecycle.js" || { \
-		echo "❌ the bundle did not contain examples/ — wrong asset?"; exit 1; }; \
-	$(MAKE) --no-print-directory sdk-install SDK_DIR="$(SDK_DIR)"; \
-	echo "✅ SDK $(SDK_VERSION) ready at $(SDK_DIR)"
+		echo "📦 e2e driver dependencies present (pinned)"; \
+	fi
 
 ## fetch the pinned guardian binaries (or use GUARDIAND_BIN=/GUARDIANCTL_BIN=<path>)
 #
@@ -338,7 +311,7 @@ faucet:
 ##@ Testing & E2E
 
 ## run the end-to-end secret lifecycle test against the running devnet
-e2e: sdk-sync
+e2e: e2e-deps
 	@if ! curl -s --max-time 2 $(CHAIN_RPC)/status >/dev/null 2>&1; then \
 		echo "❌ Chain is not running — start the devnet first with 'make dev-up'"; \
 		exit 1; \
@@ -350,13 +323,12 @@ e2e: sdk-sync
 	fi
 	@TEST_BLOCK_TIME=$(TEST_BLOCK_TIME) bash -c 'source devnet/lib/common-utils.sh && cadence_note $(CHAIN_RPC)'
 	@echo "🧪 Running secret lifecycle end-to-end test..."
-	@# RECIPIENT_KEYPAIR is exported explicitly: the SDK examples fall back to a
-	@# path relative to their own tree (<sdk>/../../.devnet), which was this
-	@# repository inside the monorepo and is not any more.
+	@# RECIPIENT_KEYPAIR is exported explicitly — the driver cannot infer where
+	@# a devnet keeps its keypair and fails loudly without it.
 	@RECIPIENT_KEYPAIR=$(CURDIR)/$(RECIPIENT_KEYPAIR) node $(E2E_TEST)
 
 ## run the failure-path scenario suite against the running devnet (no-show slash, mid-hold cancel, early-reveal report)
-e2e-scenarios: sdk-sync
+e2e-scenarios: e2e-deps
 	@if ! curl -s --max-time 2 $(CHAIN_RPC)/status >/dev/null 2>&1; then \
 		echo "❌ Chain is not running — start the devnet first with 'make dev-up'"; \
 		exit 1; \
@@ -367,7 +339,7 @@ e2e-scenarios: sdk-sync
 		node $(E2E_KEYGEN) $(RECIPIENT_KEYPAIR); \
 	fi
 	@echo "🧪 Running failure-path scenario suite..."
-	@$(DEVNET_PATH) RECIPIENT_KEYPAIR=$(CURDIR)/$(RECIPIENT_KEYPAIR) SDK_DIR=$(SDK_DIR) TEST_BLOCK_TIME=$(TEST_BLOCK_TIME) ./devnet/e2e-scenarios.sh
+	@$(DEVNET_PATH) RECIPIENT_KEYPAIR=$(CURDIR)/$(RECIPIENT_KEYPAIR) TEST_BLOCK_TIME=$(TEST_BLOCK_TIME) ./devnet/e2e-scenarios.sh
 
 ## full E2E on the NATIVE devnet: fresh fast-block chain → lifecycle → teardown (fallback when Docker is unavailable; `make e2e-full` targets the compose stack)
 e2e-full-native:
@@ -380,4 +352,4 @@ e2e-full-native:
 	else echo "❌ Full E2E failed (exit $$status) — chain state kept in ~/.timeflare for inspection"; fi; \
 	exit $$status
 
-.PHONY: guardiand-sync sdk-sync sdk-install dev-up dev-down dev-reset dev-status faucet e2e e2e-scenarios e2e-full-native
+.PHONY: guardiand-sync e2e-deps dev-up dev-down dev-reset dev-status faucet e2e e2e-scenarios e2e-full-native

@@ -123,13 +123,13 @@ jobs:
             echo "   Fix: keep it public, or supply a read token as GH_TOKEN."
             blocked=1
           fi
-          sdk_version="$(grep -E '^SDK_VERSION=' devnet/versions.env | cut -d= -f2)"
-          if [ -n "${sdk_version}" ]; then
-            echo "✅ SDK pinned at ${sdk_version}"
+          sdk_pin="$(jq -r '.dependencies["@timeflareio/typescript-sdk"] // empty' devnet/e2e/package.json)"
+          if [ -n "${sdk_pin}" ]; then
+            echo "✅ SDK pinned at ${sdk_pin}"
           else
-            echo "❌ No SDK release to pin (SDK_VERSION empty in devnet/versions.env)."
-            echo "   The e2e harness is driven by the SDK's examples, so it has"
-            echo "   nothing to run without one."
+            echo "❌ No SDK pin (devnet/e2e/package.json lacks @timeflareio/typescript-sdk)."
+            echo "   The e2e driver consumes the released SDK dist tarball, so it"
+            echo "   has nothing to run against without one."
             blocked=1
           fi
           if [ "${blocked}" -ne 0 ]; then

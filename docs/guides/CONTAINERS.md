@@ -92,7 +92,7 @@ state-machine determinism check. Native (`make dev-up`) remains the default
 fallback of the old gate.
 
 Both export `TIMEFLARE_HOME=.devnet/docker/home` (the chain-init bind mount)
-so the harness signs with the stack's genesis keyring and keeps George's user
+so the harness signs with the stack's genesis keyring and keeps the test user's
 keyring isolated from any native devnet, and `GUARDIAN_CONTROL=docker` so the
 no-show drill stops/starts the victim's **container** instead of a host
 process. A host without `timeflared` can still run admin commands through the
