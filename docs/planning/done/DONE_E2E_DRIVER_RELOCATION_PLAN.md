@@ -1,10 +1,14 @@
 # E2E Driver Relocation Plan
 
 - **Priority**: P2 — release-engineering friction: every harness-side driver
-  change currently requires a typescript-sdk release and a pin bump, however
-  chain-local the change actually is.
-- **Status**: ready (9 August 2026 — the owner's rulings on the key name,
-  `monitor-secrets.js` and the SDK release folded in)
+  change required a typescript-sdk release and a pin bump, however chain-local
+  the change actually was.
+- **Status**: done (26 August 2026 — phase 1 merged as chain PR #30, phase 2 as
+  typescript-sdk PR #16 with SDK v0.0.8 released bundle-less, phase 3's pin
+  bump validated by the full pinned suites, phase 4's workspace root update
+  applied. The owner's rulings of 9 August 2026 — key name `user`,
+  `monitor-secrets.js` moves, the release cut and validated within this plan —
+  are folded into the body.)
 - **Origin**: design session with the owner, 9 August 2026. Trigger: removing
   the devnet test account's bootstrap-time funding was a chain-local edit, but
   removing the account's *name* was not — the name is hardcoded inside the
