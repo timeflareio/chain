@@ -6,7 +6,7 @@
   "dependencies": {
     "@cosmjs/encoding": "^0.39.0",
     "@timeflareio/crypto": "https://github.com/timeflareio/crypto/releases/download/v0.0.2/timeflare-crypto-wasm-v0.0.2.tgz",
-    "@timeflareio/typescript-sdk": "https://github.com/timeflareio/typescript-sdk/releases/download/v0.0.8/timeflare-sdk-v0.0.8.tgz"
+    "@timeflareio/typescript-sdk": "https://github.com/timeflareio/typescript-sdk/releases/download/v0.0.9/timeflare-sdk-v0.0.9.tgz"
   },
   "engines": {
     "node": ">=16.0.0"
