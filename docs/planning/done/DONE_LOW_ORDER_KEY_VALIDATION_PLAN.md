@@ -398,7 +398,7 @@ folded into the design above; recorded here because each was a judgement call.
 - [automated/CRYPTO_ASSURANCE_PLAN.md](../automated/CRYPTO_ASSURANCE_PLAN.md) — the
   broader crypto-assurance surface; this plan is one concrete defect within it and
   should be cross-referenced there rather than merged into it.
-- [automated/SECURITY_AUDIT_READINESS_PLAN.md](../automated/SECURITY_AUDIT_READINESS_PLAN.md)
+- [automated/PENDING_SECURITY_AUDIT_READINESS_PLAN.md](../automated/PENDING_SECURITY_AUDIT_READINESS_PLAN.md)
   — a resolved finding of this shape is audit-package material.
 - [done/DONE_GUARDIAN_KEY_ROTATION_PLAN.md](DONE_GUARDIAN_KEY_ROTATION_PLAN.md)
   — established the key-epoch model and the permanent uniqueness index this plan

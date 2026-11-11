@@ -1,18 +1,31 @@
 # CI gating — run only what the diff can actually change
 
-- **Priority** — P2 — CI latency and cost; no protocol impact, but it shapes
-  every contributor's edit loop and blocks documentation work behind a
-  twenty-minute suite.
-- **Status** — `refining` (4 August 2026). Two open questions below.
-- **Origin** — owner request, 4 August 2026: "ensure the various workflows are
-  gated on things that can actually change the outcome", motivated by
-  documentation changes paying for full verification and tests.
-- **Components** —
-  - `.github/workflows/ci.yml` (all four jobs)
-  - `.github/workflows/release.yml` (reviewed; deliberately left ungated)
-  - repository branch-protection settings (required status checks) — not a file
-    in this repository, and the reason design B is chosen over design A
-  - no Go, proto, spec or `make` surface changes
+| | |
+|---|---|
+| **Priority** | P2 |
+| **Status** | refining |
+| **Created** | 4 August 2026 |
+| **Updated** | 11 November 2026 |
+| **Protocol surface** | none |
+| **Repositories** | chain |
+| **Depends on** | — |
+| **Related** | [DONE_E2E_SCENARIO_DETERMINISM_PLAN.md](done/DONE_E2E_SCENARIO_DETERMINISM_PLAN.md) |
+| **Open questions** | 4 |
+
+**Why this priority**: CI latency and cost; no protocol impact, but it shapes
+every contributor's edit loop and blocks documentation work behind the full
+verification, test and e2e suites.
+**Status notes**: Four open questions below.
+**Origin**: owner request, 4 August 2026: "ensure the various workflows are
+gated on things that can actually change the outcome", motivated by
+documentation changes paying for full verification and tests.
+**Components**:
+- `.github/workflows/ci.yml` (all four jobs)
+- `.github/workflows/release.yml` (reviewed; deliberately left ungated)
+- repository branch-protection settings (required status checks) — not a file
+  in this repository, and the reason a job-level gate is chosen over a
+  trigger-level one
+- no Go, proto, spec or `make` surface changes
 
 ## The problem
 
@@ -24,22 +37,32 @@ regardless of what changed:
 | `workflows` (actionlint) | seconds | yes |
 | `proto` (buf lint + breaking) | ~30s + buf setup | yes |
 | `chain` (`make verify` + `make test`) | minutes | yes |
-| `e2e` (devnet lifecycle) | tens of minutes | yes |
+| `e2e` (devnet lifecycle + scenarios) | around ten minutes by the projection in [DONE_E2E_SCENARIO_DETERMINISM_PLAN.md](done/DONE_E2E_SCENARIO_DETERMINISM_PLAN.md); not re-measured for this plan | yes |
 
-A change confined to prose cannot alter the outcome of any of the last three.
-`make verify` is `gofmt`/`golangci-lint`/`go vet`/`verify-boundaries`/
-`verify-choke-points` — all four read only `.go` files and the `x/secrets/types`
-module graph. `make test` compiles and runs Go tests. `buf lint` and
-`buf breaking` read `proto/` and the buf configuration. None of them opens a
-Markdown file, and no script under `make/scripts/` scans one.
+A change confined to prose cannot alter the outcome of `proto`, and — with the
+exceptions inventoried below — cannot alter `chain` or `e2e` either. `buf lint`
+and `buf breaking` read `proto/` and the buf configuration. `make test` compiles
+and runs Go tests. `make verify` is `gofmt`, `golangci-lint`, `go vet`,
+`verify-boundaries`, `verify-choke-points` and `verify-networks`: the first five
+read only `.go` files and the `x/secrets/types` module graph; the sixth reads the
+network registry and the devnet tree, and is the one that does not ignore
+Markdown.
 
 ## What each job's outcome actually depends on
 
 Established by reading the targets and grepping the test tree, not assumed:
 
 - **`make verify`** — `**/*.go`, `.golangci.yml`, `go.mod`/`go.sum` in both
-  modules, `make/go-quality.mk`.
-- **`make test`** — all of the above, plus three non-Go inputs that tests read
+  modules, `make/go-quality.mk`, plus the inputs of `verify-networks`
+  (`make/scripts/verify-networks.sh`):
+  - `networks.json` — validated structurally;
+  - `app/app.go` and `devnet/lib/common-utils.sh` — the registry's address
+    prefix and devnet chain id are compared against them;
+  - **every file under `devnet/`, whatever its extension** — the script runs a
+    recursive `grep` for a hard-coded `TIMEFLARE_BLOCK_TIME` default across the
+    whole directory. `devnet/README.md` is inside that sweep, so Markdown under
+    `devnet/` can fail `make verify`.
+- **`make test`** — the Go inputs above, plus the non-Go inputs that tests read
   from disk:
   - `docs/operations.md` — `cmd/timeflared/cmd/example_drift_test.go` extracts
     every `timeflared …` invocation and asserts the command path, every flag and
@@ -49,15 +72,18 @@ Established by reading the targets and grepping the test tree, not assumed:
     `app/rebate_pool_test.go` asserts they carry the rebate pool address.
   - `testdata/vectors/*.json` — asserted by the share-band, creation-fee, dial
     and selection-gas vector tests.
+  - `x/secrets/types/testdata/vectors/*.json` — `app/wallet_derivation_test.go`
+    reads `wallet_derivation.json` from the wire-contract module.
   - `docs/static/**`, `docs/template/**` — embedded into the binary by
     `docs/docs.go` via `//go:embed`, so they compile.
 - **`buf lint` / `buf breaking`** — `proto/**`, `buf.yaml`, `buf.lock`.
-- **`e2e`** — everything `chain` depends on, plus `devnet/**` and
-  `devnet/versions.env`.
+- **`e2e`** — everything `chain` depends on, plus `devnet/**` (which includes
+  `devnet/versions.env` and the e2e driver's `devnet/e2e/package.json` and
+  lockfile).
 - **`actionlint`** — `.github/workflows/**`.
 
-The residue — every `*.md` except `docs/operations.md`, plus `LICENSE` — is
-provably inert. That set is the gate.
+The residue — every `*.md` except `docs/operations.md` and those under
+`devnet/`, plus `LICENSE` — is provably inert.
 
 ## Design
 
@@ -98,6 +124,9 @@ LICENSE
 `docs/operations.md` is called out as an explicit exception in the same place,
 with a comment pointing at `example_drift_test.go`, so the next person to widen
 the allowlist meets the reason.
+
+As drawn, this list still matches `devnet/README.md`, which the inventory above
+shows is not inert. How Markdown under `devnet/` is treated is open question 3.
 
 ### Why not `paths-ignore`
 
@@ -157,9 +186,10 @@ gating on the wrong thing.
 
 ## What this does not solve
 
-- **`e2e` cannot pass yet.** It is blocked on the private `timeflareio/guardian`
-  repository and on the TypeScript SDK having no release to pin (both documented
-  in the job itself). Gating changes how often it runs, not whether it passes.
+- **`e2e` depends on artefacts this repository does not hold.** It runs against
+  the pinned `guardiand` release and the pinned SDK dist tarball, and its
+  `Preconditions` step fails the job when either is unreadable. Gating changes
+  how often it runs, not what it needs in order to pass.
 - **No caching or suite-splitting.** `chain` still runs `make verify` and the
   full `make test` whenever any Go file changes, including a one-line comment.
   Making *that* proportional is a different concern and would need its own plan.
@@ -172,9 +202,9 @@ gating on the wrong thing.
 ## Open questions
 
 1. **Are `chain`, `proto` and `e2e` configured as required status checks on
-   `main`?** I cannot read the branch-protection settings from the checkout.
-   *Recommendation: proceed regardless.* Design B is correct in both worlds — a
-   job-level skip reports `skipped` and satisfies a required check, whereas the
+   `main`?** The branch-protection settings cannot be read from the checkout.
+   *Recommendation: proceed regardless.* The job-level gate is correct in both
+   worlds — a skip reports `skipped` and satisfies a required check, whereas the
    `paths-ignore` alternative would break only in the "yes" case, invisibly. If
    the answer is yes, the first docs-only pull request after this lands should be
    watched to confirm the checks resolve rather than hang.
@@ -182,6 +212,23 @@ gating on the wrong thing.
    any job's outcome. *Recommendation: no.* It is one file that changes rarely,
    and every entry added to the allowlist is a standing assertion someone must
    re-verify. Keep the allowlist to the two entries that carry real traffic.
+3. **How does the allowlist treat Markdown under `devnet/`?** `verify-networks`
+   greps the whole of `devnet/`, so `devnet/README.md` can fail `make verify` and
+   `**/*.md` is not inert there. Either the allowlist carves `devnet/**` out
+   beside `docs/operations.md`, or the script's sweep is narrowed to scripts —
+   the second is a `make` surface change, which this plan currently rules out.
+   *Recommendation: carve `devnet/**/*.md` out of the allowlist.* It costs one
+   more exception line, keeps this plan to `ci.yml`, and fails towards running
+   the suite.
+4. **Does the generated-code gate belong in this plan?** `TODO.md` ("Nothing
+   verifies that generated code matches the protos") records that no check
+   confirms the committed `.pb.go` files match `proto/`, sketches a
+   `make proto-gen && git diff --exit-code` step, notes that it needs a pinned
+   generation environment to be honest, and says it "may belong" here. This plan
+   reduces what runs; that gate adds a check. *Recommendation: no — give it its
+   own plan.* It is a different concern (one plan, one concern) with its own
+   unsolved prerequisite, and folding it in would hold a simple gating change
+   behind a toolchain-pinning decision.
 
 ## Verification
 

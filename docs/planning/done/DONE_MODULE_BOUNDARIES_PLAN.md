@@ -254,7 +254,7 @@ Three consumption modes, in order of appearance:
 - **DONE_CONTAINERISATION_PLAN.md**: §3's root-context caveat for
   `guardian/Dockerfile` is resolved by Phase 4 here; its §6 names this plan
   as the "preparation, not separation" step.
-- **automated/RELEASE_ENGINEERING_PLAN.md**: release tagging must account
+- **automated/PENDING_RELEASE_ENGINEERING_PLAN.md**: release tagging must account
   for multi-module tags (`vX.Y.Z` for the chain, `x/secrets/types/vX.Y.Z`,
   `crypto/vX.Y.Z`) once Phase 4 lands.
 - **DONE_DEPENDENCY_MANAGEMENT_PLAN.md**: `deps-verify` and the workspace

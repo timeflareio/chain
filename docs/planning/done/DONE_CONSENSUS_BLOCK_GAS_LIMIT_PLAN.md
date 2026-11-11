@@ -9,7 +9,7 @@ genesis only** (see "The ruled value").
 ([DONE_MOBILE_PRE_TESTNET_SWEEP.md](DONE_MOBILE_PRE_TESTNET_SWEEP.md)
 finding 31, where it is what makes a permanent discovery wedge affordable) and
 the guardian pre-testnet sweep
-([guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP.md](guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP.md)
+([guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md](guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md)
 finding 20, where it is why a forged gas simulation is bounded only by the
 account balance — now broken out as
 [guardian/PRIORITY_GUARDIAN_TX_PATH_RESILIENCE_PLAN.md](guardian/PRIORITY_GUARDIAN_TX_PATH_RESILIENCE_PLAN.md)

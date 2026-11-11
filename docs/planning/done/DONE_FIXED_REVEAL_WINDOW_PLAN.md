@@ -88,7 +88,7 @@ not. Remove the field and derive the window on chain.*
 > exposed by
 > [DONE_ADVANCED_DIALS_PLAN.md](../../../mobile-client/docs/planning/done/DONE_ADVANCED_DIALS_PLAN.md);
 > supersedes the §7 Q2 wizard-default ruling in
-> [PENDING_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](../../../mobile-client/docs/planning/PENDING_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)
+> [DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](../../../mobile-client/docs/planning/done/DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)
 > (§7).
 
 ## 1. Why the dial does not earn its field
@@ -523,7 +523,7 @@ Spec first, per the spec-first rule — this changes protocol behaviour.
   `e2e-scenario-determinism` branch, so touching it from this worktree would
   collide. Whichever lands second re-measures against the other.
 
-- [PENDING_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](../../../mobile-client/docs/planning/PENDING_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)
+- [DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](../../../mobile-client/docs/planning/done/DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)
   — §7 Q2 rules the wizard's `revealDuration` Advanced dial and its 300-block
   default, and its §2 pricing table teaches the wizard to include the window span
   in `distance`. The dial ruling is superseded; the pricing point survives and in

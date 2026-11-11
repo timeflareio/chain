@@ -22,7 +22,7 @@ migration and described a Node.js guardian that no longer exists.*
 > (DONE_GUARDIAN_IMPROVEMENTS_PLAN.md §3.3/§5). Scope boundary: this plan owns
 > the Dockerfiles, the compose devnet, and operator run recipes; **publishing**
 > images (registry, tags, signing, multi-arch release matrix) belongs to the
-> release pipeline (automated/RELEASE_ENGINEERING_PLAN.md, which coordinates
+> release pipeline (automated/PENDING_RELEASE_ENGINEERING_PLAN.md, which coordinates
 > with this plan).
 >
 > **Implementation order (ruled, July 2026): first in the economics-calibration

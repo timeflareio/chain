@@ -252,5 +252,5 @@ docker run -d --name validator --restart unless-stopped \
 ```
 
 Cosmovisor-in-container packaging is release-pipeline territory
-(`automated/RELEASE_ENGINEERING_PLAN.md`); the image does not preclude it —
+(`automated/PENDING_RELEASE_ENGINEERING_PLAN.md`); the image does not preclude it —
 the binary path and `DAEMON_HOME` conventions sit on the volume.

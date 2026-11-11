@@ -35,7 +35,7 @@ in which a secret cannot be cancelled. Replace it with a single protocol value.*
 >
 > **Related plans**: reverses the `commit_timeout` dial exposed by
 > [DONE_ADVANCED_DIALS_PLAN.md](client-app/DONE_ADVANCED_DIALS_PLAN.md); lands
-> ahead of [PENDING_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](client-app/PENDING_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)
+> ahead of [DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](client-app/DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)
 > and [PENDING_MOBILE_OUTCOME_SURFACES_PLAN.md](client-app/PENDING_MOBILE_OUTCOME_SURFACES_PLAN.md),
 > both of which still encode the 20–200 range (§7).
 
@@ -224,7 +224,7 @@ code:
   encodes it. A completed plan is a decision log and is not rewritten; this plan
   supersedes that one dial and leaves the descriptor pattern — which is what made
   the reveal-offset floor executable rather than prose — intact.
-- **[PENDING_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](client-app/PENDING_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)**
+- **[DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](client-app/DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)**
   specifies a `commitTimeout` Advanced dial with a 60-block default and copy
   computed *from the chosen timeout* (its §5.1.5 and the wizard defaults). Those
   items dissolve rather than change: with a constant the timing floor is fixed

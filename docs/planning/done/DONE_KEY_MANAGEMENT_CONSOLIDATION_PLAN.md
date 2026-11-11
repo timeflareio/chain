@@ -12,7 +12,7 @@ below). Every phase landed with its vector pins; the full devnet gate
 (lifecycle + 53 scenario assertions) and CI were green at merge.
 **Origin**: cross-component key-management comparison, 1 August 2026 —
 guardian versus mobile client, prompted by
-[guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP.md](guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP.md)
+[guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md](guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md)
 and read against
 [DONE_MOBILE_PRE_TESTNET_SWEEP.md](DONE_MOBILE_PRE_TESTNET_SWEEP.md).
 **Components**: `app/` (`app.go`, `config.go` — `ChainCoinType` moves out);
@@ -238,7 +238,7 @@ without encryption, in a module that is independently consumable.
 function: read the file, trim, try base64, fall back to raw.
 
 Both therefore carry the base64-guessing defect recorded as finding 30 in the
-[guardian sweep](guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP.md) — a raw
+[guardian sweep](guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md) — a raw
 passphrase that happens to be valid base64 (`correcthorse`, `Passw0rd`) is
 silently decoded into binary garbage. That fix now has two sites, and fixing
 one would leave the other quietly wrong.
@@ -487,7 +487,7 @@ message instead of an opaque mismatch.
 
 ## Related plans
 
-- [guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP.md](guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP.md)
+- [guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md](guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md)
   — finding 30 (the base64-guessing passphrase reader) is *delivered by*
   phase 4's consolidation (raw-only ruling, 1 August 2026); the sweep
   inventory should be annotated accordingly when it next updates.

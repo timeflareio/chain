@@ -49,7 +49,7 @@ tops up a wallet on every network, once it can transact at all.*
 > docs sweep. Replaces the faucet item in
 > [`../automated/TESTNET_LAUNCH_PLAN.md`](../automated/TESTNET_LAUNCH_PLAN.md) §2 and
 > discharges the Wave-4 dependency in
-> [`../client-app/PENDING_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md`](../client-app/PENDING_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)
+> [`../client-app/DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md`](../client-app/DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)
 > §5.1. **No new component** — this extends `x/secrets`.
 
 ## 1. Problem
