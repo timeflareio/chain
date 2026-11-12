@@ -10,7 +10,7 @@ to be reassembled from six documents and a keeper.
 > source of truth for values — every figure below is computed from those
 > constants and cross-referenced back. Where this document and the spec
 > disagree, the spec wins and this page is the bug. Consciously accepted costs
-> live in [CHAIN_MECHANICS.md](CHAIN_MECHANICS.md#accepted-trade-offs); the funds-flow
+> live in [KNOWN_RISKS.md](KNOWN_RISKS.md#accepted-trade-offs); the funds-flow
 > summary table in [operations.md](operations.md#funds-flow-summary) is the same
 > map in one-line-per-trigger form.
 
@@ -86,7 +86,7 @@ headroom and pinned by `gas-model.test.ts`:
 
 The two guardian legs are declared at exactly the amount the protocol
 reimburses, so spend equals reimbursement to the uveil and no `gas_adjustment`
-setting can erode coverage (CHAIN_MECHANICS.md Trade-off §17). Cancel is the one handler
+setting can erode coverage (KNOWN_RISKS.md Trade-off §17). Cancel is the one handler
 whose cost is dominated by its per-guardian term rather than its base: a
 32-guardian cancel needs ~2.07M gas where a 2-guardian one needs ~214k.
 
@@ -193,7 +193,7 @@ reimbursement to validators and the burn.
 | **Key rotation fee** | `rate × 14,400` = 0.0144 VEIL | **burned in full** | per rotation |
 
 The **entry fee is sunk** — permanent registration, no exit refund
-(CHAIN_MECHANICS.md Trade-off §9). The **float is not spent**: it is working capital,
+(KNOWN_RISKS.md Trade-off §9). The **float is not spent**: it is working capital,
 withdrawable when unlocked. The **bond is not a cost** either — it is
 collateral, returned in full to an honest guardian; its cost is the
 opportunity cost of capital locked for the secret's duration. The **rotation
@@ -360,7 +360,7 @@ invoice is fixed costs. On a one-year secret the guardians take 95%, the
 creation fee 4.8%, and gas rounds to nothing. Short secrets are
 disproportionately expensive by design: the work of guarding a secret has a
 fixed cost that brevity cannot avoid, and that same property is the
-short-secret spam defence (CHAIN_MECHANICS.md Trade-off §15).
+short-secret spam defence (KNOWN_RISKS.md Trade-off §15).
 
 ## 11. Invariants
 

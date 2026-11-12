@@ -220,11 +220,12 @@ gating on the wrong thing.
    *Recommendation: carve `devnet/**/*.md` out of the allowlist.* It costs one
    more exception line, keeps this plan to `ci.yml`, and fails towards running
    the suite.
-4. **Does the generated-code gate belong in this plan?** `TODO.md` ("Nothing
-   verifies that generated code matches the protos") records that no check
+4. **Does the generated-code gate belong in this plan?** `docs/KNOWN_RISKS.md`
+   (Gaps With No Owner §1, "Nothing verifies that generated code matches the
+   protos") records that no check
    confirms the committed `.pb.go` files match `proto/`, sketches a
    `make proto-gen && git diff --exit-code` step, notes that it needs a pinned
-   generation environment to be honest, and says it "may belong" here. This plan
+   generation environment to be honest. This plan
    reduces what runs; that gate adds a check. *Recommendation: no — give it its
    own plan.* It is a different concern (one plan, one concern) with its own
    unsolved prerequisite, and folding it in would hold a simple gating change

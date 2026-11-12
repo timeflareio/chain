@@ -25,7 +25,7 @@ validators run.
 **Origin**: multi-repo migration plan (monorepo history), which delegated
 release strategy to a per-repo plan.
 **Components**: `.github/workflows/release.yml`, `Makefile`,
-`COMPATIBILITY.md`, `PROTOCOL_CHANGE.md`, `TODO.md`, and the consumer-facing
+`COMPATIBILITY.md`, `PROTOCOL_CHANGE.md`, `docs/KNOWN_RISKS.md`, and the consumer-facing
 contract with the guardian, the TypeScript SDK and the mobile client.
 
 **Already landed**: the release mechanics. `.github/workflows/release.yml`
@@ -149,8 +149,9 @@ names the obligation to whoever edits one.
    engineering plan here, extended to state the requirement for every repository
    that ships a binary — and settle it before any public network.
 
-4. **Does a release gate on the e2e suites?** `TODO.md` ("A release can publish
-   from a commit whose E2E is unknown") records that a tag pushed while `main`'s
+4. **Does a release gate on the e2e suites?** `docs/KNOWN_RISKS.md` (Gaps With
+   No Owner §2, "A release can publish from a commit whose E2E is unknown")
+   records that a tag pushed while `main`'s
    e2e is red or still running publishes anyway, and that this is worked around
    by judgement. It lists three options: require green `main` in the
    `PROTOCOL_CHANGE.md` runbook; add e2e to the release gate and accept its
@@ -173,9 +174,8 @@ names the obligation to whoever edits one.
 
 6. **Is the proto tarball kept?** It has no consumer: it carries `proto/` alone,
    and buf needs `buf.yaml` and `buf.lock` from the repository root to generate,
-   so the SDK regenerates from the tagged source archive. The comment in
-   `release.yml` refers to `TODO.md` for the choice between making the tarball
-   self-sufficient and dropping it, and `TODO.md` holds no such entry.
+   so the SDK regenerates from the tagged source archive. The choice is between
+   making the tarball self-sufficient and dropping it.
    *Recommendation*: make it self-sufficient by adding the two buf files — the
    definitions are the protocol surface, and an integrator generating their own
    bindings should be able to pin them without cloning the node.

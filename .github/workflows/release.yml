@@ -122,8 +122,9 @@ jobs:
       # buf needs buf.yaml and buf.lock from the repository root to generate — so
       # the SDK regenerates from the tagged source archive instead. Published
       # because the definitions are the protocol surface and an integrator
-      # generating their own bindings wants them at a pinned version; see TODO.md
-      # for the choice between making it self-sufficient and dropping it.
+      # generating their own bindings wants them at a pinned version. Whether to
+      # make it self-sufficient or drop it is open:
+      # docs/planning/PENDING_RELEASE_STRATEGY_PLAN.md.
       - name: Package the protocol surface
         run: |
           set -euo pipefail

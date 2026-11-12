@@ -60,7 +60,7 @@ The reasoning sits below the table as prose, each field on a bold label:
 - **Why this priority** — the one-line reason behind the `P` value.
 - **Status notes** — optional: what has landed, and the branch/PR as status
   advances.
-- **Origin** — link the motivating issue, CHAIN_MECHANICS.md ledger item (oddity/observation/defect), review, or
+- **Origin** — link the motivating issue, KNOWN_RISKS.md item (oddity/observation/defect), review, or
   design session.
 - **Components** — enumerate every surface the plan touches (modules, proto,
   clients, docs, tests). This is the blast-radius checklist for execution.

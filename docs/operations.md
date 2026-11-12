@@ -2,7 +2,7 @@
 
 This document is the operation-level API reference for the Timeflare protocol: every invocable operation and automatic (block-driven) operation, with its model context, field validation, preconditions, side effects, token flows and validated CLI usage.
 
-**Related documents**: [spec.md](spec.md) is the protocol authority — the rationale, economics and security model behind every rule stated here. [CHAIN_MECHANICS.md](CHAIN_MECHANICS.md) is the implementation's inside view: state layout, genesis behaviour, measured performance, and the judgement ledger — accepted trade-offs, deliberate oddities, open concerns and defects. Where this document states *what an operation does and how to call it*, those two explain *why* and *at what cost*.
+**Related documents**: [spec.md](spec.md) is the protocol authority — the rationale, economics and security model behind every rule stated here. [CHAIN_MECHANICS.md](CHAIN_MECHANICS.md) is the implementation's inside view: state layout, genesis behaviour and measured performance. [KNOWN_RISKS.md](KNOWN_RISKS.md) is the register of judgements — accepted trade-offs, deliberate oddities, open concerns and defects. Where this document states *what an operation does and how to call it*, those explain *why* and *at what cost*.
 
 **Note**: All operations are implemented in a single unified `secrets` module that handles both guardian infrastructure and secret lifecycle management. Every handler first verifies the transaction signer equals the actor address named in the message.
 
@@ -709,7 +709,7 @@ timeflared tx secrets recipient-collect-rebate <secret-id> <64-hex-char-proof-z>
 
 ## Time-Based Operations (BeginBlock/EndBlock)
 
-Block-driven operations run automatically — no transaction invokes them. All queue processing is due-height driven: an idle block does almost no work. Failures on these paths are quarantined per secret (partial state discarded, the entry retried every block, a `settlement_stalled` event and error log raised from the first failure) — never a chain halt. [CHAIN_MECHANICS.md](CHAIN_MECHANICS.md) carries the performance shape and open concerns of each path.
+Block-driven operations run automatically — no transaction invokes them. All queue processing is due-height driven: an idle block does almost no work. Failures on these paths are quarantined per secret (partial state discarded, the entry retried every block, a `settlement_stalled` event and error log raised from the first failure) — never a chain halt. [CHAIN_MECHANICS.md](CHAIN_MECHANICS.md) carries the performance shape of each path, and [KNOWN_RISKS.md](KNOWN_RISKS.md) its open concerns.
 
 ### Fee Split (BeginBlock)
 
@@ -859,7 +859,7 @@ Each split sums to 100; the burn share is always > 0 and the creator share alway
 
 | Value | Location | Purpose |
 |---|---|---|
-| `SHA256("secrets" ‖ secretID ‖ guardianAddr ‖ "hmac_salt")` | `crypto/hmac.go` (pure Go — chain + guardian) and `rust/src/utils.rs` (WASM/TS SDK) | HMAC key derivation — deliberately public inputs so the chain can verify evidence keylessly ([CHAIN_MECHANICS.md Trade-off §2](CHAIN_MECHANICS.md#accepted-trade-offs)) |
+| `SHA256("secrets" ‖ secretID ‖ guardianAddr ‖ "hmac_salt")` | `crypto/hmac.go` (pure Go — chain + guardian) and `rust/src/utils.rs` (WASM/TS SDK) | HMAC key derivation — deliberately public inputs so the chain can verify evidence keylessly ([KNOWN_RISKS.md Trade-off §2](KNOWN_RISKS.md#2-hmac-keys-derive-entirely-from-public-inputs)) |
 | 32 bytes | `PublicKeyLength` / HMAC output | Guardian/recipient key size and SHA256-HMAC size |
 | 32 bytes, not a small-order point | `crypto.ValidateX25519PublicKey`, called from `keeper/validation.go` and asserted by invariant 8 | Every X25519 key the protocol accepts must yield a **contributory** exchange — a small-order point produces an all-zero shared secret, making any derived key publicly computable. Enforced at guardian registration, key rotation, `pk_s`, the detection hint's `ephemeral_pub`, and the genesis path (hard halt). Delegated to `curve25519.X25519` rather than a blacklist, so non-canonical encodings are covered too; pinned across implementations by `testdata/vectors/low_order_keys.json` |
 
@@ -902,4 +902,4 @@ timeflared query secrets hints-since 120000
 
 ---
 
-This specification defines all operations, required fields, validation rules, preconditions and token flows for the Timeflare protocol. The gRPC services are the source of truth and the CLI covers them 1:1 by construction (AutoCLI); protocol rationale lives in [spec.md](spec.md) and the implementation internals and judgement ledger in [CHAIN_MECHANICS.md](CHAIN_MECHANICS.md).
+This specification defines all operations, required fields, validation rules, preconditions and token flows for the Timeflare protocol. The gRPC services are the source of truth and the CLI covers them 1:1 by construction (AutoCLI); protocol rationale lives in [spec.md](spec.md) and the implementation internals in [CHAIN_MECHANICS.md](CHAIN_MECHANICS.md) and the register of accepted trade-offs and open concerns in [KNOWN_RISKS.md](KNOWN_RISKS.md).

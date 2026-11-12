@@ -132,7 +132,7 @@ The counters are protocol state, not caches of convenience: acceptance slot-capp
 
 Guardian selection consumes **no creator input at all**: the selection seed is built entirely from consensus data (`SHA256(chainID ‖ uint64_be(height) ‖ lastBlockHash ‖ uint64_be(secret_counter))`), and the secret ID itself is protocol-assigned from a monotonic counter. The reservation event carries the seed inputs (height, previous block hash, counter) plus the derived seed, so anyone can confirm from public data that **the seed was honest** — none of its inputs are the creator's, so the creator could not have biased the selection. The event deliberately does not carry the candidate set; independently recomputing the full selection would require historical guardian state, which is a statement about validator honesty that BFT consensus already provides. See [Guardian Selection (Normative)](#guardian-selection-normative).
 
-> **📋 For the operation-level API reference** (fields, validation, preconditions, side effects, CLI usage), see **[operations.md](operations.md)**; for state layout, genesis behaviour, measured performance and the judgement ledger, see **[CHAIN_MECHANICS.md](CHAIN_MECHANICS.md)**.
+> **📋 For the operation-level API reference** (fields, validation, preconditions, side effects, CLI usage), see **[operations.md](operations.md)**; for state layout, genesis behaviour and measured performance, see **[CHAIN_MECHANICS.md](CHAIN_MECHANICS.md)**; for accepted trade-offs, open concerns and defects, see **[KNOWN_RISKS.md](KNOWN_RISKS.md)**.
 
 ---
 

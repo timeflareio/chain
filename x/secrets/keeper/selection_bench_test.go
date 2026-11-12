@@ -17,7 +17,7 @@ import (
 // That distinction matters because unmetered work is a block-time question
 // rather than a fee question: a creator cannot be charged for it, and there is
 // no per-block gas ceiling to bound it
-// (docs/CHAIN_MECHANICS.md, Security Observations §1).
+// (docs/KNOWN_RISKS.md, Security Observations §1).
 //
 // Selection is O(eligible) by construction and cannot be less: sortition takes
 // the lowest max_shares tickets across all candidates, so every ticket must be

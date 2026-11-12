@@ -259,7 +259,7 @@ func (k Keeper) furthestAvailability(ctx context.Context) int64 {
 // the first max_shares found would select by store order, which is bech32
 // address ascending — and guardian addresses are self-chosen, so that would be
 // offline-grindable by exactly the route creatorAddress was removed from the
-// seed to close (docs/CHAIN_MECHANICS.md Trade-off §5). The index narrows WHAT is read,
+// seed to close (docs/KNOWN_RISKS.md Trade-off §5). The index narrows WHAT is read,
 // never how much of it.
 func (k Keeper) EligibleCandidatesFor(ctx context.Context, revealEndBlock, distance, bump int64) ([]EligibleCandidate, CandidateRejections, error) {
 	currentHeight := sdk.UnwrapSDKContext(ctx).BlockHeight()
