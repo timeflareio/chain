@@ -20,6 +20,7 @@ skipping, and the row covers the whole suite.
 
 | Chain | Wire contract | Guardian | Crypto | SDK | Mobile | Chain vectors | Primitive vectors |
 |---|---|---|---|---|---|---|---|
+| `v0.0.6` | `x/secrets/types/v0.0.4` | `v0.0.5` | `v0.0.3` Go (chain), `v0.0.1` Go (guardian), `v0.0.2` npm | `v0.0.9` | untagged, `sdk v0.0.9` | `chain v0.0.6` (SDK), `v0.0.4` (guardian) | `crypto v0.0.2`, two files |
 | `v0.0.5` | `x/secrets/types/v0.0.4` | `v0.0.5` | `v0.0.1` Go, `v0.0.2` npm | `v0.0.7` | untagged, `sdk v0.0.7` | `chain v0.0.5` (SDK), `v0.0.4` (guardian) | `crypto v0.0.2`, two files |
 | `v0.0.4` | `x/secrets/types/v0.0.3` | `v0.0.4` | `v0.0.1` Go, `v0.0.2` npm | `v0.0.5` | untagged, `sdk v0.0.3` | `chain v0.0.3` (SDK), `v0.0.2` (guardian) | `crypto v0.0.2`, two files |
 | `v0.0.3` | `x/secrets/types/v0.0.2` | `v0.0.3` | `v0.0.1` | `v0.0.2` | untagged, `sdk v0.0.2` | `chain v0.0.3` | `crypto v0.0.1` |
@@ -28,6 +29,28 @@ skipping, and the row covers the whole suite.
 **`v0.0.2` has no row.** It was released before the release train was walked, and
 a row is a claim that was tested. Its component set was never verified together,
 so naming one would be inventing the claim this file exists to record.
+
+### What the `v0.0.6` row records
+
+A vectors-only release: it adds the universal link sections to
+`client_conventions.json` and changes no proto, no wire contract and no keeper
+behaviour. The suites ran at `TIMEFLARE_BLOCK_TIME=1s` with
+`TIMEFLARE_RETENTION_BLOCKS=200` and `TIMEFLARE_KEY_ROTATION_MIN_INTERVAL=30`,
+so S5 and S8 ran and the row covers the whole suite.
+
+- **The wire contract and the guardian do not move.** Nothing the guardian
+  reads changed: of this corpus it asserts only the mnemonic vectors, which are
+  the same bytes, so it stays on `v0.0.5` and on the chain vectors it already
+  cites.
+- **The SDK column jumps from `v0.0.7` to `v0.0.9`.** `v0.0.8` shipped the dist
+  tarball as its only artefact and was adopted by the devnet between chain
+  releases, with no chain release to hang a row on. `v0.0.9` adds the universal
+  link codec and moves `CHAIN_VERSION` to `v0.0.6`.
+- **Crypto is `v0.0.3` in the chain's `go.mod` and `v0.0.1` in the released
+  guardian's.** The chain's pin moved with a routine dependency update. The Go
+  module is the same primitives at both tags — the only Go change between them
+  is an added fuzz test — and the suites passing with one daemon on each is
+  what this row tests. The guardian's pin follows at its next release.
 
 ### Why the numbers in the `v0.0.4` row disagree
 
