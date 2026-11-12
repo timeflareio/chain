@@ -190,9 +190,9 @@ runs it, because that is what the network is.
 
 **`TIMEFLARE_BLOCK_TIME` overrides it, to any value.** A test, a bespoke devnet or an
 experiment sets whatever it needs; nothing restricts the choice. `TEST_BLOCK_TIME`
-in `make/common.mk` is the value the test paths reach for — one second, because
+in `make/common.mk` is the value the test paths reach for — 200ms, because
 every wait in the e2e and scenario suites is a block distance and the deployment
-cadence makes the same assertions take about six times as long — but it is a
+cadence makes the same assertions take about thirty times as long — but it is a
 convenience, not a rule.
 
 What *is* disciplined is where the default comes from. No script carries one:
@@ -204,9 +204,9 @@ command when it is slower than the test cadence:
 
 ```
 [cadence] ~6.0s per block
-[cadence] slower than the test cadence (1s), so this run will take
+[cadence] slower than the test cadence (200ms), so this run will take
 [cadence] proportionally longer. To restart the devnet at the test cadence:
-[cadence]   TIMEFLARE_BLOCK_TIME=1s make dev-reset
+[cadence]   TIMEFLARE_BLOCK_TIME=200ms make dev-reset
 ```
 
 It compares what it measured, not whether `TIMEFLARE_BLOCK_TIME` is set in the
