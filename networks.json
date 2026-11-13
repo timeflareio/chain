@@ -13,6 +13,18 @@
         "rest": ["http://localhost:1317"],
         "grpc": ["localhost:9090"]
       }
+    },
+    {
+      "id": "test-alpha",
+      "label": "Test network alpha",
+      "chainId": "timeflare-testnet-alpha",
+      "local": false,
+      "blockTime": "6s",
+      "endpoints": {
+        "rpc": ["https://rpc.test-alpha.net.timeflare.io"],
+        "rest": ["https://rest.test-alpha.net.timeflare.io"],
+        "grpc": ["grpc.test-alpha.net.timeflare.io:443"]
+      }
     }
   ]
 }
