@@ -12,7 +12,7 @@ pairing is recorded nowhere else. A missing or stale row makes it unanswerable.
 `make e2e` and `make e2e-scenarios` pass against those exact pinned artefacts.
 
 The suites run at `TIMEFLARE_BLOCK_TIME=1s`, which is the cadence
-`devnet/e2e-scenarios.sh` documents and CI uses — the protocol is denominated in
+`devnet/e2e-scenarios.sh` documents — the protocol is denominated in
 blocks, so cadence changes what a window costs in seconds and nothing about what
 it means. Where a row's suites also ran with `TIMEFLARE_RETENTION_BLOCKS` and
 `TIMEFLARE_KEY_ROTATION_MIN_INTERVAL` reduced, S5 and S8 ran too rather than
@@ -20,6 +20,7 @@ skipping, and the row covers the whole suite.
 
 | Chain | Wire contract | Guardian | Crypto | SDK | Mobile | Chain vectors | Primitive vectors |
 |---|---|---|---|---|---|---|---|
+| `v0.0.7` | `x/secrets/types/v0.0.4` | `v0.0.5` | `v0.0.3` Go (chain), `v0.0.1` Go (guardian), `v0.0.2` npm | `v0.0.9` | untagged, `sdk v0.0.9` | `chain v0.0.6` (SDK), `v0.0.4` (guardian) | `crypto v0.0.2`, two files |
 | `v0.0.6` | `x/secrets/types/v0.0.4` | `v0.0.5` | `v0.0.3` Go (chain), `v0.0.1` Go (guardian), `v0.0.2` npm | `v0.0.9` | untagged, `sdk v0.0.9` | `chain v0.0.6` (SDK), `v0.0.4` (guardian) | `crypto v0.0.2`, two files |
 | `v0.0.5` | `x/secrets/types/v0.0.4` | `v0.0.5` | `v0.0.1` Go, `v0.0.2` npm | `v0.0.7` | untagged, `sdk v0.0.7` | `chain v0.0.5` (SDK), `v0.0.4` (guardian) | `crypto v0.0.2`, two files |
 | `v0.0.4` | `x/secrets/types/v0.0.3` | `v0.0.4` | `v0.0.1` Go, `v0.0.2` npm | `v0.0.5` | untagged, `sdk v0.0.3` | `chain v0.0.3` (SDK), `v0.0.2` (guardian) | `crypto v0.0.2`, two files |
@@ -29,6 +30,25 @@ skipping, and the row covers the whole suite.
 **`v0.0.2` has no row.** It was released before the release train was walked, and
 a row is a claim that was tested. Its component set was never verified together,
 so naming one would be inventing the claim this file exists to record.
+
+### What the `v0.0.7` row records
+
+A tooling release: it changes two devnet scripts and no Go, no proto, no wire
+contract and no vector. `devnet/fund.sh` acts only on a network it is told by
+name, and `devnet/chain/apply-genesis-economics.sh` leaves the SDK's
+governance periods alone unless asked. It exists so that a network definition
+in `timeflareio/network` can pin the scripts that build its genesis and make
+its grants at a release, as it pins the node. The suites ran with the node
+installed from the tag, at `TIMEFLARE_BLOCK_TIME=1s` with
+`TIMEFLARE_RETENTION_BLOCKS=200` and `TIMEFLARE_KEY_ROTATION_MIN_INTERVAL=30`,
+so S5 and S8 ran and the row covers the whole suite.
+
+- **Every other column is the `v0.0.6` row's.** Nothing a consumer reads
+  moved, so none of them has anything to follow. The SDK still pins
+  `CHAIN_VERSION` at `v0.0.6`, whose protos and vectors are byte-identical to
+  this release's.
+- **The mobile client's e2e suites follow by one line.** They call `fund.sh`,
+  and name the devnet when they do.
 
 ### What the `v0.0.6` row records
 
