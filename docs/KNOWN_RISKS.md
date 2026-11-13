@@ -814,7 +814,7 @@ see the full URL. A claim link carrying nothing, with the kit pasted in
 separately, would close all three; it was declined for the extra step it puts
 on a first-contact claimant.
 **Where decided**: owner, 11 November 2026; `timeflareio/mobile-client` —
-`docs/planning/PENDING_UNIVERSAL_LINKS_PLAN.md` §2 and §8.
+`docs/planning/done/DONE_UNIVERSAL_LINKS_PLAN.md` §2 and §8.
 
 ## Load-Bearing Oddities — Deliberate Decisions Worth Revisiting
 
