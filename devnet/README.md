@@ -142,27 +142,31 @@ devnet/
 ## Funding any address (`fund.sh` / `make faucet`)
 
 `devnet/fund.sh` is the single funding primitive every use case composes
-over — Spike B wallets, app onboarding testing, the e2e suites, guardian
-bring-up. It validates the recipient (prefix + bech32 checksum) before
-sending, broadcasts sync from the bootstrapping genesis key, polls to inclusion,
-retries on account-sequence mismatch (parallel callers are safe), and exits
-with deterministic codes (documented in the script header — CI consumers
-rely on them):
+over — app onboarding testing, the e2e suites, guardian bring-up, and grants
+on a public network. It validates the recipient (prefix + bech32 checksum)
+before sending, broadcasts sync, polls to inclusion, retries on
+account-sequence mismatch (parallel callers are safe), and exits with
+deterministic codes (documented in the script header — CI consumers rely on
+them).
+
+It always takes `--network`, and has no default. The network's entry in
+`networks.json` supplies the chain id and the node, the chain id is checked
+against what the node reports before anything is signed, and the key comes
+from that network's own keyring. On the devnet that key is the bootstrapping
+genesis key:
 
 ```bash
-./devnet/fund.sh tmflr1…                          # 1,000 VEIL from the bootstrapping pool
-./devnet/fund.sh tmflr1… 5000000000               # explicit uveil amount
-./devnet/fund.sh tmflr1… --node 192.168.1.20:26657  # non-default node (compose stack, LAN)
+./devnet/fund.sh --network devnet tmflr1…                # 1,000 VEIL from the bootstrapping pool
+./devnet/fund.sh --network devnet tmflr1… 5000000000     # explicit uveil amount
+./devnet/fund.sh --network devnet tmflr1… --node 192.168.1.20:26657  # the devnet at another address (compose stack, LAN)
 
-make faucet ADDR=tmflr1…                          # thin preset wrapper
-make faucet ADDR=tmflr1… AMOUNT=5000000000
+make faucet ADDR=tmflr1…                                 # the devnet preset
+make faucet ADDR=tmflr1… AMOUNT=5
 ```
 
-There is no pool to choose. Genesis holds two (docs/spec.md "Genesis Pool
-Allocations"): the **bootstrapping** key, which funds every actor a launch needs
-and is what this script draws on, and the **keyless rebate pool**, which has no
-key at all. The script stays policy-free: on a public network, funding a wallet
-is either a bootstrapping grant or a protocol rebate, never a service.
+On any other network the key is `grant` unless `--key` names another, read
+from `~/.timeflare/networks/<id>/keyring`, and `--node` is refused: a public
+network is reached where the registry says. The script header has the rest.
 
 ## Guardian orchestration
 
@@ -280,8 +284,9 @@ Caveats and profiles:
   (`TIMEFLARE_BLOCK_TIME=2s make dev-reset` — a full secret lifecycle in
   minutes); periodically run at the production ~6 s default to keep
   countdown/estimate UX honest ("blocks, not clocks").
-- **Funding device wallets**: `make faucet ADDR=tmflr1…` (or `fund.sh` with
-  `--node` for non-local stacks) funds any address the app generates.
+- **Funding device wallets**: `make faucet ADDR=tmflr1…` (or
+  `fund.sh --network devnet` with `--node` for a devnet at another address)
+  funds any address the app generates.
 
 ## Troubleshooting
 

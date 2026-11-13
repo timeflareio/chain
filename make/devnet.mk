@@ -306,7 +306,7 @@ faucet:
 		0) echo "AMOUNT must be more than zero"; exit 2 ;; \
 	esac; \
 	echo "==> Funding $(ADDR) with $$veil VEIL ($$uveil uveil)"; \
-	./devnet/fund.sh "$(ADDR)" "$$uveil" --node "$(or $(NODE),localhost:26657)"
+	./devnet/fund.sh --network devnet "$(ADDR)" "$$uveil" --node "$(or $(NODE),localhost:26657)"
 
 ##@ Testing & E2E
 
