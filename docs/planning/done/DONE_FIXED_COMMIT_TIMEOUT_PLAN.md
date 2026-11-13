@@ -34,9 +34,9 @@ in which a secret cannot be cancelled. Replace it with a single protocol value.*
 > countdown), `devnet/` scenario scripts and `mobile-client/e2e/`.
 >
 > **Related plans**: reverses the `commit_timeout` dial exposed by
-> [DONE_ADVANCED_DIALS_PLAN.md](client-app/DONE_ADVANCED_DIALS_PLAN.md); lands
-> ahead of [DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](client-app/DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)
-> and [PENDING_MOBILE_OUTCOME_SURFACES_PLAN.md](client-app/PENDING_MOBILE_OUTCOME_SURFACES_PLAN.md),
+> `timeflareio/mobile-client` — `DONE_ADVANCED_DIALS_PLAN.md`; lands
+> ahead of `timeflareio/mobile-client` — `DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md`
+> and `timeflareio/mobile-client` — `PENDING_MOBILE_OUTCOME_SURFACES_PLAN.md`,
 > both of which still encode the 20–200 range (§7).
 
 ## 1. Why the dial does not earn its field
@@ -218,18 +218,18 @@ Spec first, per the spec-first rule — this changes protocol behaviour.
 The dial being removed was deliberately built, so the reversal is not confined to
 code:
 
-- **[DONE_ADVANCED_DIALS_PLAN.md](client-app/DONE_ADVANCED_DIALS_PLAN.md)**
+- **`timeflareio/mobile-client` — `DONE_ADVANCED_DIALS_PLAN.md`**
   exposed `commit_timeout` as an advanced dial (step 10 over 20–200,
   `affects: ['reliability']`) and introduced the `DIALS` descriptor table that
   encodes it. A completed plan is a decision log and is not rewritten; this plan
   supersedes that one dial and leaves the descriptor pattern — which is what made
   the reveal-offset floor executable rather than prose — intact.
-- **[DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](client-app/DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)**
+- **`timeflareio/mobile-client` — `DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md`**
   specifies a `commitTimeout` Advanced dial with a 60-block default and copy
   computed *from the chosen timeout* (its §5.1.5 and the wizard defaults). Those
   items dissolve rather than change: with a constant the timing floor is fixed
   copy, not a computation.
-- **[PENDING_MOBILE_OUTCOME_SURFACES_PLAN.md](client-app/PENDING_MOBILE_OUTCOME_SURFACES_PLAN.md)**
+- **`timeflareio/mobile-client` — `PENDING_MOBILE_OUTCOME_SURFACES_PLAN.md`**
   cites `COMMIT_TIMEOUT_MAX_BLOCKS` = 200 in its countdown reasoning.
 
 This plan lands **first**. It is protocol surface, it deletes work from both

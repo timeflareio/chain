@@ -347,7 +347,7 @@ password where an operator meets the port table.
 
 ## 8. Handoff
 
-[`PENDING_DASHBOARD_GUARDIAN_ACTIONS_PLAN.md`](../guardian/PENDING_DASHBOARD_GUARDIAN_ACTIONS_PLAN.md)
+`timeflareio/guardian` — `PENDING_DASHBOARD_GUARDIAN_ACTIONS_PLAN.md`
 is the first slice of runbook mode and is hard-gated on this plan. It
 inherits this credential and must extend it: state-changing
 routes need CSRF defence (which `GET`-only status quo makes unnecessary

@@ -36,11 +36,11 @@ remains the only thing they choose.*
 > **Origin**: measurement of the live devnet, 26–27 July 2026 — settled
 > secret `c56f1d4b` pays each guardian 439 uveil against 22,931 uveil of gas.
 > Extends the fee-economics family:
-> [DONE_CREATION_FEE_PLAN.md](done/DONE_CREATION_FEE_PLAN.md) (whose
+> [DONE_CREATION_FEE_PLAN.md](DONE_CREATION_FEE_PLAN.md) (whose
 > gas-denominated floor is the precedent this plan reuses),
-> [DONE_VALIDATOR_REWARD_ROUTING_PLAN.md](done/DONE_VALIDATOR_REWARD_ROUTING_PLAN.md)
+> [DONE_VALIDATOR_REWARD_ROUTING_PLAN.md](DONE_VALIDATOR_REWARD_ROUTING_PLAN.md)
 > (the one-pipe ruling), and
-> [DONE_DYNAMIC_BOND_ECONOMICS_PLAN.md](done/DONE_DYNAMIC_BOND_ECONOMICS_PLAN.md)
+> [DONE_DYNAMIC_BOND_ECONOMICS_PLAN.md](DONE_DYNAMIC_BOND_ECONOMICS_PLAN.md)
 > (the pricing core this modifies).
 > **Components**: `x/secrets/types` (`constants.go` gas figures,
 > `economics.go` pool derivation, economics-core tests);

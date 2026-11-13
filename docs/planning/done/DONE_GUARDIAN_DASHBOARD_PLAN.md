@@ -101,7 +101,7 @@ rotation, guardian updates).
     address, encrypted-at-rest status with a prominent legacy-plaintext
     warning.
 14. **Rotation panel** — read-only view over the shipped key-rotation state
-    ([done/DONE_GUARDIAN_KEY_ROTATION_PLAN.md](DONE_GUARDIAN_KEY_ROTATION_PLAN.md)):
+    ([DONE_GUARDIAN_KEY_ROTATION_PLAN.md](DONE_GUARDIAN_KEY_ROTATION_PLAN.md)):
     the current epoch (`Guardian.current_key_epoch`, 0 at registration and
     +1 per `MsgGuardianRotateKey`), the epoch history with each entry's
     effective height from the key-epochs query, rotation eligibility against

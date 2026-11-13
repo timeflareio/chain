@@ -25,12 +25,12 @@ without ongoing governance cycles.*
 > and the concurrency cap
 > ([DONE_DYNAMIC_BOND_ECONOMICS_PLAN.md](DONE_DYNAMIC_BOND_ECONOMICS_PLAN.md)
 > — constants fixed by owner ruling against the calibration evidence in
-> [../reports/econsim-calibration-v1/ECONSIM_CALIBRATION_V1.md](../../reports/econsim-calibration-v1/ECONSIM_CALIBRATION_V1.md)),
+> `ECONSIM_CALIBRATION_V1.md`),
 > and the wired 90/10 fee burn
 > ([DONE_FEE_BURN_PLAN.md](DONE_FEE_BURN_PLAN.md)). The near-term protocol work has
 > since been **carved into its own plans**:
-> [DONE_CREATION_FEE_PLAN.md](../DONE_CREATION_FEE_PLAN.md),
-> [DONE_CONSENSUS_FEE_FLOOR_PLAN.md](../DONE_CONSENSUS_FEE_FLOOR_PLAN.md)
+> [DONE_CREATION_FEE_PLAN.md](DONE_CREATION_FEE_PLAN.md),
+> [DONE_CONSENSUS_FEE_FLOOR_PLAN.md](DONE_CONSENSUS_FEE_FLOOR_PLAN.md)
 > and [DONE_VALIDATOR_REWARD_ROUTING_PLAN.md](DONE_VALIDATOR_REWARD_ROUTING_PLAN.md)
 > (which owns `community_tax = 0` and the July 2026 reward-routing defect).
 > What remains for THIS plan is the launch surface: mainnet genesis
@@ -83,7 +83,7 @@ without ongoing governance cycles.*
 > **Implementation order**: the economics-calibration chain
 > (containerisation → simulation → value decisions) has completed its first two
 > steps — the simulator ran, produced
-> [ECONSIM_CALIBRATION_V1.md](../../reports/econsim-calibration-v1/ECONSIM_CALIBRATION_V1.md),
+> `ECONSIM_CALIBRATION_V1.md`,
 > and was decommissioned with the guardian-side values ruled directly from it.
 > The remaining numeric decisions (§9 Q1 creation fee, Q2 gas floor, Q5 pricing
 > corridor) read from the same report's sweeps. There is no governance path to
@@ -239,7 +239,7 @@ plan's to fix.
 3. **The fee floor is advisory — OPEN.** 0.1 uveil is node config, not protocol state,
    so both validator gas revenue and the 10 % burn can be bypassed by any validator
    willing to accept cheaper transactions — owned by
-   [DONE_CONSENSUS_FEE_FLOOR_PLAN.md](../DONE_CONSENSUS_FEE_FLOOR_PLAN.md).
+   [DONE_CONSENSUS_FEE_FLOOR_PLAN.md](DONE_CONSENSUS_FEE_FLOOR_PLAN.md).
 4. ~~Spec self-contradiction on mutability.~~ Resolved by the design stance: immutable
    wins — constants stay compile-time; retuning is a coordinated software upgrade,
    expected rarely (§8.1). Verify spec.md carries no residual "governance-tunable"
@@ -812,16 +812,16 @@ front door.
 
 Still requiring explicit decisions. The numeric ones (Q1, Q2, Q5) read from the
 calibration report
-([ECONSIM_CALIBRATION_V1.md](../../reports/econsim-calibration-v1/ECONSIM_CALIBRATION_V1.md));
+(`ECONSIM_CALIBRATION_V1.md`);
 Q3, Q4 and Q6 are product/design decisions the calibration does not gate:
 
 1. **Creation fee values**: now owned by
-   [DONE_CREATION_FEE_PLAN.md](../DONE_CREATION_FEE_PLAN.md) (its §6 Q1,
+   [DONE_CREATION_FEE_PLAN.md](DONE_CREATION_FEE_PLAN.md) (its §6 Q1,
    carrying the same recommendation: 10 % + a k2 = 4 guardian-day floor). The
    coupling stands: Q1 and Q5 should be ruled together — the VEIL amounts only
    mean something at a fiat level.
 2. **Gas floor**: now owned by
-   [DONE_CONSENSUS_FEE_FLOOR_PLAN.md](../DONE_CONSENSUS_FEE_FLOOR_PLAN.md)
+   [DONE_CONSENSUS_FEE_FLOOR_PLAN.md](DONE_CONSENSUS_FEE_FLOOR_PLAN.md)
    (its §4 Q1, carrying the same recommendation: enforce at the current
    0.1 uveil).
 3. **Bulk distribution mechanism** (the big one): public sale / LBP settling into
@@ -858,12 +858,12 @@ balances; Phase 5 is unblocked and its metrics are worth landing early.
   [DONE_VALIDATOR_REWARD_ROUTING_PLAN.md](DONE_VALIDATOR_REWARD_ROUTING_PLAN.md)
   (the tax and the routing defect must land together).
 - **Phase 2 — Creation fee**: carved out into
-  [DONE_CREATION_FEE_PLAN.md](../DONE_CREATION_FEE_PLAN.md), which owns the
+  [DONE_CREATION_FEE_PLAN.md](DONE_CREATION_FEE_PLAN.md), which owns the
   design, the Q1 value ruling and the implementation — and records the
   validator reward-routing defect (July 2026 finding) its routing depends on.
   This plan retains the validator-budget analysis (§5.4) and the Q5 coupling.
 - **Phase 3 — Consensus fee floor**: carved out into
-  [DONE_CONSENSUS_FEE_FLOOR_PLAN.md](../DONE_CONSENSUS_FEE_FLOOR_PLAN.md).
+  [DONE_CONSENSUS_FEE_FLOOR_PLAN.md](DONE_CONSENSUS_FEE_FLOOR_PLAN.md).
 - **Phase 4 — Genesis & launch config**: explicit mainnet genesis for gov, staking
   and validator-slashing params (§6 table); replace the three endowment pools with
   genesis-file balances from the bulk mechanism (Q3) + operator earn-in (§7.1) plus

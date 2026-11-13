@@ -26,7 +26,7 @@ post-launch adjustment knob.*
 > simulation/testnet calibration programme, is this plan's *decision* (that
 > programme, not governance, calibrates the constants) and its execution
 > lives with
-> [PENDING_ECONOMIC_SIMULATION_PLAN.md](../PENDING_ECONOMIC_SIMULATION_PLAN.md) /
+> `PENDING_ECONOMIC_SIMULATION_PLAN.md` /
 > [REJECTED_TOKEN_ECONOMICS_PLAN.md](REJECTED_TOKEN_ECONOMICS_PLAN.md) and
 > the testnet-launch plan.*
 
@@ -119,7 +119,7 @@ tractable — essentially everything derives from two knobs (`rate`,
 `bond_multiplier`) plus the creator's `bump` dial. Two layers:
 
 **Simulation** — specified in
-[PENDING_ECONOMIC_SIMULATION_PLAN.md](../PENDING_ECONOMIC_SIMULATION_PLAN.md)
+`PENDING_ECONOMIC_SIMULATION_PLAN.md`
 (an executable model importing the chain's own pricing functions, projecting
 1/2/5/10/25/100-year horizons);
 [REJECTED_TOKEN_ECONOMICS_PLAN.md](REJECTED_TOKEN_ECONOMICS_PLAN.md) owns the
@@ -190,7 +190,7 @@ upgrade drill).
    tracked here only as an ordering constraint.
 5. **Simulation + testnet calibration programme** — the §4 content; the
    simulator is specified in
-   [PENDING_ECONOMIC_SIMULATION_PLAN.md](../PENDING_ECONOMIC_SIMULATION_PLAN.md),
+   `PENDING_ECONOMIC_SIMULATION_PLAN.md`,
    the values in TOKEN_ECONOMICS, the testnet execution in the
    testnet-launch plan. This plan's contribution is the decision that this
    programme, not governance, is the calibration mechanism.

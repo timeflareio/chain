@@ -241,7 +241,7 @@ The alternatives were rejected. Putting a pure-bytes blacklist in
 table §4.1 rejects. Promoting `golang.org/x/crypto` to a direct dependency of
 `x/secrets/types` works against the reason the two leaves are kept independent —
 recorded in CLAUDE.md and
-[done/DONE_MODULE_BOUNDARIES_PLAN.md](DONE_MODULE_BOUNDARIES_PLAN.md) §3:
+[DONE_MODULE_BOUNDARIES_PLAN.md](DONE_MODULE_BOUNDARIES_PLAN.md) §3:
 they are consumed and tagged separately, so anything handing the wire-contract
 module a crypto dependency reaches every external client pinning it. A poor trade
 for one predicate, and the general rule it would breach is worth more than the
@@ -395,14 +395,14 @@ folded into the design above; recorded here because each was a judgement call.
 
 ## 10. Related plans
 
-- [automated/CRYPTO_ASSURANCE_PLAN.md](../automated/CRYPTO_ASSURANCE_PLAN.md) — the
+- `timeflareio/crypto` — `DONE_CRYPTO_ASSURANCE_PLAN.md` — the
   broader crypto-assurance surface; this plan is one concrete defect within it and
   should be cross-referenced there rather than merged into it.
-- [automated/PENDING_SECURITY_AUDIT_READINESS_PLAN.md](../automated/PENDING_SECURITY_AUDIT_READINESS_PLAN.md)
+- [PENDING_SECURITY_AUDIT_READINESS_PLAN.md](../PENDING_SECURITY_AUDIT_READINESS_PLAN.md)
   — a resolved finding of this shape is audit-package material.
-- [done/DONE_GUARDIAN_KEY_ROTATION_PLAN.md](DONE_GUARDIAN_KEY_ROTATION_PLAN.md)
+- [DONE_GUARDIAN_KEY_ROTATION_PLAN.md](DONE_GUARDIAN_KEY_ROTATION_PLAN.md)
   — established the key-epoch model and the permanent uniqueness index this plan
   validates entries into.
-- [done/DONE_KEY_SHARE_ARCHITECTURE_PLAN.md](DONE_KEY_SHARE_ARCHITECTURE_PLAN.md)
+- [DONE_KEY_SHARE_ARCHITECTURE_PLAN.md](DONE_KEY_SHARE_ARCHITECTURE_PLAN.md)
   §8 — the share-entropy analysis whose 256-bit claim this defect voids for an
   affected share.

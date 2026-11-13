@@ -294,7 +294,7 @@ count).
   deliberate, uniform extension of the existing reveal-time behaviour, documented
   as such.
 - **Security §1 (selection grinding)** — unaffected and still requires the
-  request-time creation fee ([done/DONE_COMMIT_ABANDONMENT_FORFEIT_PLAN.md](done/DONE_COMMIT_ABANDONMENT_FORFEIT_PLAN.md),
+  request-time creation fee ([DONE_COMMIT_ABANDONMENT_FORFEIT_PLAN.md](DONE_COMMIT_ABANDONMENT_FORFEIT_PLAN.md),
   owned by [REJECTED_TOKEN_ECONOMICS_PLAN.md](REJECTED_TOKEN_ECONOMICS_PLAN.md)).
   Selection stays protocol-controlled and the flow stays multi-interaction with
   the first binding.

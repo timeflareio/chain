@@ -73,7 +73,7 @@ in a wire-contract module. Everything else in the package is genuine
 wire-contract material and stays in the extracted module — including two
 additions since this plan was first drafted: the parameterised fee-split
 core in `economics.go` (`SplitFeeAmountWith`, added for
-[PENDING_ECONOMIC_SIMULATION_PLAN.md](../PENDING_ECONOMIC_SIMULATION_PLAN.md))
+`PENDING_ECONOMIC_SIMULATION_PLAN.md`)
 and the detection-hint helpers (`detection_hint.go`). (Import scan
 re-verified 18 July 2026: the types package imports only cosmos-sdk types,
 gogoproto/grpc libraries, and itself — no root-module packages, in tests
@@ -260,7 +260,7 @@ Three consumption modes, in order of appearance:
 - **DONE_DEPENDENCY_MANAGEMENT_PLAN.md**: `deps-verify` and the workspace
   drift check gain two modules (`go build`/`govulncheck`/tidy across four
   module roots instead of two); Dependabot gets two more `gomod` entries.
-- **[PENDING_ECONOMIC_SIMULATION_PLAN.md](../PENDING_ECONOMIC_SIMULATION_PLAN.md)**:
+- **`PENDING_ECONOMIC_SIMULATION_PLAN.md`**:
   its §2/§7 name this plan as the simulator's import-surface decision.
   The in-place ruling (§7.1) makes that surface permanent:
   `…/timeflare/x/secrets/types` is now a lean standalone module, so the

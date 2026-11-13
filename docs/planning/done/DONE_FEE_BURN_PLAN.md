@@ -28,7 +28,7 @@ lever.*
 >
 > **Simulation requirement (ruled with this plan)**: the split ratio is a
 > first-class **sweepable input** to the economic simulation
-> ([PENDING_ECONOMIC_SIMULATION_PLAN.md](../PENDING_ECONOMIC_SIMULATION_PLAN.md)),
+> (`PENDING_ECONOMIC_SIMULATION_PLAN.md`),
 > via the parameterised economics core (that plan's §2/§5 resolution,
 > option (a)). 10 % is the wired baseline; the simulator plays with it.
 

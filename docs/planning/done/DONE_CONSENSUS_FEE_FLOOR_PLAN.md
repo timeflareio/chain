@@ -24,7 +24,7 @@ zero governance parameters, per Position A.*
 > being exploited on a devnet we run ourselves.
 > **Origin**: token-economics plan §5.7 analysis and its §3 audit item 3
 > ("the fee floor is advisory"); calibration evidence in
-> [ECONSIM_CALIBRATION_V1.md](../../reports/econsim-calibration-v1/ECONSIM_CALIBRATION_V1.md)
+> `ECONSIM_CALIBRATION_V1.md`
 > (gas-fee sweep: health flat across the range — the value is not
 > load-bearing; the structure is).
 > **Components**: `app/` (the chain's **first explicitly-assembled ante

@@ -12,9 +12,9 @@ below). Every phase landed with its vector pins; the full devnet gate
 (lifecycle + 53 scenario assertions) and CI were green at merge.
 **Origin**: cross-component key-management comparison, 1 August 2026 —
 guardian versus mobile client, prompted by
-[guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md](guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md)
+`timeflareio/guardian` — `PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md`
 and read against
-[DONE_MOBILE_PRE_TESTNET_SWEEP.md](DONE_MOBILE_PRE_TESTNET_SWEEP.md).
+`timeflareio/mobile-client` — `DONE_MOBILE_PRE_TESTNET_SWEEP.md`.
 **Components**: `app/` (`app.go`, `config.go` — `ChainCoinType` moves out);
 `x/secrets/types` (`constants.go` — the constant's new home);
 `typescript-sdk/src/protocol/wallet.ts`, `crypto.ts`;
@@ -204,7 +204,7 @@ instruct the operator to run `timeflared keys add`
 distroless guardian image ships no `timeflared`.
 
 This is the same shape as the missing `withdraw` verb already recorded in
-[guardian/PENDING_GUARDIAN_DEAD_CODE_SWEEP_PLAN.md](guardian/PENDING_GUARDIAN_DEAD_CODE_SWEEP_PLAN.md):
+`timeflareio/guardian` — `PENDING_GUARDIAN_DEAD_CODE_SWEEP_PLAN.md`:
 a core lifecycle step a containerised operator cannot perform with the tooling
 they were given. It is recorded here rather than there because the decision is
 about key-domain parity, not dead code.
@@ -238,7 +238,7 @@ without encryption, in a module that is independently consumable.
 function: read the file, trim, try base64, fall back to raw.
 
 Both therefore carry the base64-guessing defect recorded as finding 30 in the
-[guardian sweep](guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md) — a raw
+guardian sweep (`timeflareio/guardian` — `PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md`) — a raw
 passphrase that happens to be valid base64 (`correcthorse`, `Passw0rd`) is
 silently decoded into binary garbage. That fix now has two sites, and fixing
 one would leave the other quietly wrong.
@@ -487,18 +487,18 @@ message instead of an opaque mismatch.
 
 ## Related plans
 
-- [guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md](guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md)
+- `timeflareio/guardian` — `PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md`
   — finding 30 (the base64-guessing passphrase reader) is *delivered by*
   phase 4's consolidation (raw-only ruling, 1 August 2026); the sweep
   inventory should be annotated accordingly when it next updates.
-- [guardian/PRIORITY_GUARDIAN_CUSTODY_HARDENING_PLAN.md](guardian/PRIORITY_GUARDIAN_CUSTODY_HARDENING_PLAN.md)
+- `timeflareio/guardian` — `PRIORITY_GUARDIAN_CUSTODY_HARDENING_PLAN.md`
   — owns the guardian's share-key custody; this plan deliberately does not
   touch it beyond the dead `crypto/` API beside it.
-- [guardian/PENDING_GUARDIAN_DEAD_CODE_SWEEP_PLAN.md](guardian/PENDING_GUARDIAN_DEAD_CODE_SWEEP_PLAN.md)
+- `timeflareio/guardian` — `PENDING_GUARDIAN_DEAD_CODE_SWEEP_PLAN.md`
   — the `withdraw` verb, the same key-domain-parity family as §4.
-- [DONE_MOBILE_PRE_TESTNET_SWEEP.md](DONE_MOBILE_PRE_TESTNET_SWEEP.md)
+- `timeflareio/mobile-client` — `DONE_MOBILE_PRE_TESTNET_SWEEP.md`
   findings 6, 16 and 21 — the CI job, the mobile corpus assertion and the
   dependency declaration. Phase 3 is blocked on finding 6's job existing.
-- [DONE_MOBILE_SWEEP_REMEDIATION_PLAN.md](DONE_MOBILE_SWEEP_REMEDIATION_PLAN.md)
+- `timeflareio/mobile-client` — `DONE_MOBILE_SWEEP_REMEDIATION_PLAN.md`
   — states that the `TODO(crypto-surface)` fix remains outstanding; phase 3 is
   that fix.

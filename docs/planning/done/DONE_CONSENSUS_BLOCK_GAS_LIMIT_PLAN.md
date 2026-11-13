@@ -6,13 +6,13 @@ in two sweeps, and genesis is the cheapest moment to set it.
 **Status**: done (1 August 2026 — [PR #136](https://github.com/leedavis81/timeflare/pull/136) merged, CI green). The measurement leg ran and the owner ruled the same day: **75,000,000, set at
 genesis only** (see "The ruled value").
 **Origin**: surfaced twice independently — the mobile pre-testnet sweep
-([DONE_MOBILE_PRE_TESTNET_SWEEP.md](DONE_MOBILE_PRE_TESTNET_SWEEP.md)
+(`timeflareio/mobile-client` — `DONE_MOBILE_PRE_TESTNET_SWEEP.md`
 finding 31, where it is what makes a permanent discovery wedge affordable) and
 the guardian pre-testnet sweep
-([guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md](guardian/PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md)
+(`timeflareio/guardian` — `PENDING_GUARDIAN_PRE_TESTNET_SWEEP_PLAN.md`
 finding 20, where it is why a forged gas simulation is bounded only by the
 account balance — now broken out as
-[guardian/PRIORITY_GUARDIAN_TX_PATH_RESILIENCE_PLAN.md](guardian/PRIORITY_GUARDIAN_TX_PATH_RESILIENCE_PLAN.md)
+`timeflareio/guardian` — `PRIORITY_GUARDIAN_TX_PATH_RESILIENCE_PLAN.md`
 §3, which owns the *daemon-side* ceiling). Neither sweep nor that plan owns
 this: they are client and daemon documents, and this is a chain-side consensus
 parameter.
@@ -258,17 +258,17 @@ measurement leg was the only substantial work.
 
 ## Cross-links
 
-- [DONE_MOBILE_PRE_TESTNET_SWEEP.md](DONE_MOBILE_PRE_TESTNET_SWEEP.md)
+- `timeflareio/mobile-client` — `DONE_MOBILE_PRE_TESTNET_SWEEP.md`
   finding 31 — the discovery wedge; owns the SDK pagination remedy, and cites
   this plan as the owner of the concentration vector.
-- [guardian/PRIORITY_GUARDIAN_TX_PATH_RESILIENCE_PLAN.md](guardian/PRIORITY_GUARDIAN_TX_PATH_RESILIENCE_PLAN.md)
+- `timeflareio/guardian` — `PRIORITY_GUARDIAN_TX_PATH_RESILIENCE_PLAN.md`
   §3 — the unbounded *declared* gas limit, and the daemon-side ceiling that
   refuses to sign an absurd simulated figure. That plan reasons from the
   absence of a consensus `max_gas`; this one supplies it. The two are
   complementary and neither substitutes for the other: a consensus limit caps
   the damage of a simulation the daemon wrongly trusts, and a daemon ceiling
   holds even on a network whose limit is generous.
-- [guardian/PENDING_GUARDIAN_TRANSPORT_SECURITY_PLAN.md](guardian/PENDING_GUARDIAN_TRANSPORT_SECURITY_PLAN.md)
+- `timeflareio/guardian` — `PENDING_GUARDIAN_TRANSPORT_SECURITY_PLAN.md`
   — the plaintext channel that makes a forged simulation reachable in the
   first place.
 - [CHAIN_MECHANICS.md](../../CHAIN_MECHANICS.md) §8 (fixed prices, zero

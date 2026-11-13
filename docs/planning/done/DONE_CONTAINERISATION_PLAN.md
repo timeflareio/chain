@@ -27,7 +27,7 @@ migration and described a Node.js guardian that no longer exists.*
 >
 > **Implementation order (ruled, July 2026): first in the economics-calibration
 > chain.** The agreed sequence is **1. this plan →
-> 2. [PENDING_ECONOMIC_SIMULATION_PLAN.md](../PENDING_ECONOMIC_SIMULATION_PLAN.md) →
+> 2. `PENDING_ECONOMIC_SIMULATION_PLAN.md` →
 > 3. [REJECTED_TOKEN_ECONOMICS_PLAN.md](REJECTED_TOKEN_ECONOMICS_PLAN.md)**. The
 > reproducible network environments delivered here (isolated compose devnet
 > with zero-toolchain bring-up, multi-validator topology, `make docker-e2e`

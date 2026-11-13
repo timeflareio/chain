@@ -39,7 +39,7 @@ nothing pinned it to the code.
 ## Scope boundaries
 
 - **Guardian documentation** (`guardian/`) is owned by
-  [PENDING_GUARDIAN_DOCS_RESYNC_PLAN.md](../guardian/PENDING_GUARDIAN_DOCS_RESYNC_PLAN.md)
+  `timeflareio/guardian` — `PENDING_GUARDIAN_DOCS_RESYNC_PLAN.md`
   and the guardian pre-testnet sweep — not touched here.
 - **Mobile documentation** (`mobile-client/`) is owned by the mobile sweep
   plans — not touched here.

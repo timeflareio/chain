@@ -339,7 +339,7 @@ A guardian's keys form an **append-only history** `(guardian, epoch) → {public
 
 #### What Rotation Cannot Do
 
-Rotation is **not a loss-recovery mechanism**. Shares are encrypted client-side by creators to the then-current key; the chain holds only ciphertext. A guardian who loses a key still misses every reveal encrypted to it and eats the no-reveal slashes — loss mitigation is the custody story (encrypted-at-rest key file, backup/restore, startup self-check; see [GUARDIAN_KEY_CUSTODY.md](guides/GUARDIAN_KEY_CUSTODY.md)).
+Rotation is **not a loss-recovery mechanism**. Shares are encrypted client-side by creators to the then-current key; the chain holds only ciphertext. A guardian who loses a key still misses every reveal encrypted to it and eats the no-reveal slashes — loss mitigation is the custody story (encrypted-at-rest key file, backup/restore, startup self-check; see `timeflareio/guardian` — `docs/guides/GUARDIAN_KEY_CUSTODY.md`).
 
 #### Rotation and In-Flight Commit Windows
 
@@ -1302,7 +1302,7 @@ The coin type is the shared constant `ChainCoinType` (`x/secrets/types`),
 applied to the SDK config in `app/config.go`. Every client that generates or
 restores a wallet from a BIP39 mnemonic derives at `m/44'/9733'/0'/0/0` —
 never a library default — per
-[CLIENT_CONVENTIONS.md §9](guides/CLIENT_CONVENTIONS.md); the
+`timeflareio/typescript-sdk` — `docs/guides/CLIENT_CONVENTIONS.md` §9; the
 mnemonic → address pairing is pinned across implementations by
 `testdata/vectors/wallet_derivation.json`.
 
@@ -1354,8 +1354,8 @@ economic constants.
 - **Account Security**: Guardian address follows standard Cosmos SDK account security
 - **Epoch Immutability**: Each epoch's key binding is permanently immutable — the key an assignment was encrypted to can never change; only the current-epoch pointer advances (see [Guardian Key Rotation](#-guardian-key-rotation))
 - **Key Rotation**: The hygiene path — rotate forward for future assignments while old epochs serve their in-flight secrets to settlement; rotation is **not** loss recovery
-- **Custody**: Encrypted-at-rest key file, backup/restore with on-chain verification, and startup self-check — see [GUARDIAN_KEY_CUSTODY.md](guides/GUARDIAN_KEY_CUSTODY.md)
-- **Compromise Recovery**: Set `accepting_secrets = false` immediately, then rotate; see [GUARDIAN_KEY_CUSTODY.md](guides/GUARDIAN_KEY_CUSTODY.md) "Compromise" for the full procedures (including signing-key compromise)
+- **Custody**: Encrypted-at-rest key file, backup/restore with on-chain verification, and startup self-check — see `timeflareio/guardian` — `docs/guides/GUARDIAN_KEY_CUSTODY.md`
+- **Compromise Recovery**: Set `accepting_secrets = false` immediately, then rotate; see `timeflareio/guardian` — `docs/guides/GUARDIAN_KEY_CUSTODY.md` "Compromise" for the full procedures (including signing-key compromise)
 
 **Security Benefits**:
 - **Standard Identity**: Uses proven Cosmos SDK account system for identity

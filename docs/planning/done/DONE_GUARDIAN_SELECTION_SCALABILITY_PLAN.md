@@ -371,7 +371,7 @@ operations are **unmetered** — `EndBlock` settlement work and the sortition CP
   runtime-detection design was written out and rejected the same day; the
   error-modality catalogue and the argument against halting on derived-state
   faults are kept in
-  [`done/REJECTED_DERIVED_STATE_REPAIR_PLAN.md`](REJECTED_DERIVED_STATE_REPAIR_PLAN.md).
+  [`REJECTED_DERIVED_STATE_REPAIR_PLAN.md`](REJECTED_DERIVED_STATE_REPAIR_PLAN.md).
 - **The declared-gas boundary** — measured at roughly 139–228 *eligible*
   guardians depending on band (§1). Widening the margin is the wrong response:
   Cosmos charges the declared limit, so it taxes every creator to defer a

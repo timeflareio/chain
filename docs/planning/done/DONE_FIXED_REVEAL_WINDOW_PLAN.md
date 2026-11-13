@@ -82,13 +82,13 @@ not. Remove the field and derive the window on chain.*
 > the release train.
 >
 > **Related plans**: follows the pattern of
-> [done/DONE_FIXED_COMMIT_TIMEOUT_PLAN.md](done/DONE_FIXED_COMMIT_TIMEOUT_PLAN.md),
+> [DONE_FIXED_COMMIT_TIMEOUT_PLAN.md](DONE_FIXED_COMMIT_TIMEOUT_PLAN.md),
 > which collapsed the sibling dial — though that one resolved to a scalar and
 > this one does not, for the reason in §2. Reverses the `revealDuration` dial
 > exposed by
-> [DONE_ADVANCED_DIALS_PLAN.md](../../../mobile-client/docs/planning/done/DONE_ADVANCED_DIALS_PLAN.md);
+> `timeflareio/mobile-client` — `DONE_ADVANCED_DIALS_PLAN.md`;
 > supersedes the §7 Q2 wizard-default ruling in
-> [DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](../../../mobile-client/docs/planning/done/DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)
+> `timeflareio/mobile-client` — `DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md`
 > (§7).
 
 ## 1. Why the dial does not earn its field
@@ -513,7 +513,7 @@ Spec first, per the spec-first rule — this changes protocol behaviour.
 
 ## 7. Plans this collides with
 
-- [PENDING_E2E_SCENARIO_DETERMINISM_PLAN.md](PENDING_E2E_SCENARIO_DETERMINISM_PLAN.md)
+- [DONE_E2E_SCENARIO_DETERMINISM_PLAN.md](DONE_E2E_SCENARIO_DETERMINISM_PLAN.md)
   — its §4 constants table lists `MinRevealDuration` and `MaxRevealDuration`, and
   its shrink analysis concludes "**duration**: no scope. Already at
   `MinRevealDuration`". Both statements are retired by this change, and the
@@ -523,20 +523,20 @@ Spec first, per the spec-first rule — this changes protocol behaviour.
   `e2e-scenario-determinism` branch, so touching it from this worktree would
   collide. Whichever lands second re-measures against the other.
 
-- [DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md](../../../mobile-client/docs/planning/done/DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md)
+- `timeflareio/mobile-client` — `DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md`
   — §7 Q2 rules the wizard's `revealDuration` Advanced dial and its 300-block
   default, and its §2 pricing table teaches the wizard to include the window span
   in `distance`. The dial ruling is superseded; the pricing point survives and in
   fact becomes more important, since the span now moves with the offset the
   creator is adjusting. Sweep both.
-- [PENDING_CONSTANTS_SYNC_PLAN.md](../../../mobile-client/docs/planning/PENDING_CONSTANTS_SYNC_PLAN.md)
+- `timeflareio/mobile-client` — `PENDING_CONSTANTS_SYNC_PLAN.md`
   — owns how mobile stays in step with chain constants. A derived window is the
   first case where mobile must mirror a chain *computation* rather than a value;
   confirm that plan's mechanism covers it, or record the gap there.
-- [DONE_ADVANCED_DIALS_PLAN.md](../../../mobile-client/docs/planning/done/DONE_ADVANCED_DIALS_PLAN.md)
+- `timeflareio/mobile-client` — `DONE_ADVANCED_DIALS_PLAN.md`
   — records the dial's `affects: ['reliability', 'cost']` descriptor. Completed,
   so not edited; noted because it is where the dial's rationale lives.
-- [done/DONE_FIXED_COMMIT_TIMEOUT_PLAN.md](done/DONE_FIXED_COMMIT_TIMEOUT_PLAN.md)
+- [DONE_FIXED_COMMIT_TIMEOUT_PLAN.md](DONE_FIXED_COMMIT_TIMEOUT_PLAN.md)
   — the precedent for removing a timing dial. Its §6 item 8 re-anchored a
   `dials.json` case named `maximum commit window and reveal duration`; that case
   is touched again here.

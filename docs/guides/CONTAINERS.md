@@ -228,7 +228,7 @@ Monitor via the metrics port; `/ready` and `/health` map directly onto
 container and Kubernetes probes. On start the daemon verifies the local
 share key derives the on-chain registered public key and refuses to run on a
 mismatch. Full custody model, backup cadence, and the restore drill:
-[GUARDIAN_KEY_CUSTODY.md](GUARDIAN_KEY_CUSTODY.md).
+`timeflareio/guardian` — `docs/guides/GUARDIAN_KEY_CUSTODY.md`.
 
 ## Operator recipe: run a validator in a container
 

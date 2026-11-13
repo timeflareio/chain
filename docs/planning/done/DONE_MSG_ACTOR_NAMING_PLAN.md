@@ -95,7 +95,7 @@ signer ambiguity.
 7. Docs and scripts: `TESTING_COMMANDS.md`, custody runbook, FAQ,
    devnet/e2e scripts that invoke tx verbs.
 8. Pending-plan sweep — update message citations in:
-   `REJECTED_TOKEN_ECONOMICS_PLAN.md`, `PENDING_RETRY_CONVENTION_PLAN.md`,
+   `REJECTED_TOKEN_ECONOMICS_PLAN.md`, `DONE_RETRY_CONVENTION_PLAN.md`,
    `automated/GUARDIAN_SELECTION_SCALABILITY_PLAN.md`,
    `automated/DOCS_ACCURACY_REFRESH_PLAN.md`, and the three
    `client-app/` plans that cite old names. (Done plans are historical

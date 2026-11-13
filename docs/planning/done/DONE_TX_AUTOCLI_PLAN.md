@@ -27,13 +27,13 @@ than a latent defect.*
 > (`x/secrets/client/cli/tx.go`) never sets `payload_ciphertext` or
 > `secret_public_key`, both required by `ValidateBasic` since the key-share
 > architecture change
-> ([done/DONE_KEY_SHARE_ARCHITECTURE_PLAN.md](done/DONE_KEY_SHARE_ARCHITECTURE_PLAN.md))
+> ([DONE_KEY_SHARE_ARCHITECTURE_PLAN.md](DONE_KEY_SHARE_ARCHITECTURE_PLAN.md))
 > — the command fails on every invocation and nothing noticed, because the
 > e2e creator flow runs through the TypeScript SDK and guardians act via
 > `guardiand` over gRPC. This is precisely the failure mode the query
 > surface already engineered away (CLAUDE.md "CLI/Query Parity"); this plan
 > closes the tx half. Enabled by the AutoCLI-capable sdk line (see
-> [PENDING_AUTOCLI_PIN_REMOVAL_PLAN.md](PENDING_AUTOCLI_PIN_REMOVAL_PLAN.md),
+> [DONE_AUTOCLI_PIN_REMOVAL_PLAN.md](DONE_AUTOCLI_PIN_REMOVAL_PLAN.md),
 > which retires the carried pin — independent of this plan, no ordering
 > constraint).
 >
@@ -239,7 +239,7 @@ Grep-driven, July 2026 — per the cross-component sweep rule:
 - **A machine-readable seal artefact** for the creator flow (one JSON
   emitted by the SDK's seal step consumed whole by `distribute-shares`).
   Attractive, but it is TypeScript SDK surface design and belongs with
-  [PRIORITY_PENDING_TS_CLIENT_CONSOLIDATION_PLAN.md](PRIORITY_PENDING_TS_CLIENT_CONSOLIDATION_PLAN.md);
+  `timeflareio/typescript-sdk` — `DONE_TS_CLIENT_CONSOLIDATION_PLAN.md`;
   the §2.3 repair keeps today's file format.
 - **Protocol behaviour** — no message, validation or state-machine change
   of any kind.

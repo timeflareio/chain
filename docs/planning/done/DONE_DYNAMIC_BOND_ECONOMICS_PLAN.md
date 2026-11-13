@@ -14,7 +14,7 @@ cap on concurrent secrets, and a lower `rate`.*
 > in the original draft were put to the owner in a review session on
 > 21 July 2026 and ruled (each ruling is recorded inline in §2 below, marked
 > **Ruled**). The evidence base remains the informal exploration conducted
-> against the [PENDING_ECONOMIC_SIMULATION_PLAN.md](PENDING_ECONOMIC_SIMULATION_PLAN.md)
+> against the `PENDING_ECONOMIC_SIMULATION_PLAN.md`
 > engine (`tools/econsim`), logged there as open questions §8.8–§8.13.
 > Because the owner has fixed the values directly, the calibration sweeps
 > originally gating this plan (§4) are superseded — see the note at the top
@@ -252,7 +252,7 @@ of `n` acceptors.
 
 ## 3. Position A implications — narrower than initially framed
 
-[DONE_PARAMS_GOVERNANCE_DECISION_PLAN.md](done/DONE_PARAMS_GOVERNANCE_DECISION_PLAN.md)
+[DONE_PARAMS_GOVERNANCE_DECISION_PLAN.md](DONE_PARAMS_GOVERNANCE_DECISION_PLAN.md)
 ruled the economic constants **fully immutable at launch** — no `Params`
 state, no `MsgUpdateParams`, retunable only via a rare, coordinated software
 upgrade that never re-prices in-flight secrets. The reasoning given there:
@@ -326,7 +326,7 @@ it, don't delete it — it is not the same thing as `tools/econsim`, and most
 of what it covers still applies.**
 
 **Why they're different things.**
-[DONE_ECONOMICS_TEST_STRATEGY_PLAN.md](done/DONE_ECONOMICS_TEST_STRATEGY_PLAN.md)
+[DONE_ECONOMICS_TEST_STRATEGY_PLAN.md](DONE_ECONOMICS_TEST_STRATEGY_PLAN.md)
 is a three-tier test suite (`x/secrets/keeper/conformance_test.go`,
 `lifecycle_fuzz_test.go`, `make e2e-scenarios`) that proves the **chain's
 actual code** correctly implements exact settlement amounts, slash splits,
@@ -335,7 +335,7 @@ conservation, no-stranded-bonds, queue hygiene) — for *whatever* the wired
 economics are. `tools/econsim` is a completely separate tool: a long-horizon
 (1–100 year) Monte Carlo projection used to decide *what the constants
 should be*, per
-[PENDING_ECONOMIC_SIMULATION_PLAN.md](PENDING_ECONOMIC_SIMULATION_PLAN.md).
+`PENDING_ECONOMIC_SIMULATION_PLAN.md`.
 Neither replaces the other. **Confirmed with the owner**: "remove all the
 economic simulation code" refers to `tools/econsim` specifically — **not**
 the conformance/fuzz/e2e suite, which is chain-correctness infrastructure

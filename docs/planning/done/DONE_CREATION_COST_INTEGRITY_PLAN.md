@@ -89,7 +89,7 @@ the pool is small.
 This is the exact failure mode the alignment plan's §7 Q4 ruling names — *"the
 user pays a number they never saw"* — arriving by omission rather than by the
 staleness that ruling anticipated. See
-[PENDING_CONSTANTS_SYNC_PLAN.md](../client-app/PENDING_CONSTANTS_SYNC_PLAN.md),
+`timeflareio/mobile-client` — `PENDING_CONSTANTS_SYNC_PLAN.md`,
 whose node-version sealing gate is the defence against the staleness variant
 and does nothing about this one.
 
@@ -118,7 +118,7 @@ never mentions the accept fees or the creation fee.
 
 `RenewScreen.tsx` computes its fresh-seal quote as `pool + acceptFees` with the
 same creation-fee omission. Renewal is not wired to the chain yet
-([PENDING_RENEW_ORCHESTRATION_PLAN.md](../client-app/PENDING_RENEW_ORCHESTRATION_PLAN.md)
+(`timeflareio/mobile-client` — `PENDING_RENEW_ORCHESTRATION_PLAN.md`
 owns that), so this is a latent rather than live defect — fixed here because
 the arithmetic lives in the same place.
 
@@ -340,13 +340,13 @@ this plan's history. Two residuals:
 - **It does not address which dials a client exposes.** `max_shares` being
   hardcoded client-side, and the coarse step granularity on bump, commit
   timeout and reveal duration, are the subject of
-  [DONE_ADVANCED_DIALS_PLAN.md](../client-app/DONE_ADVANCED_DIALS_PLAN.md).
+  `timeflareio/mobile-client` — `DONE_ADVANCED_DIALS_PLAN.md`.
   The two plans touch `wizardState.ts` together and should be sequenced, not
   merged: this one corrects arithmetic that is wrong today, that one widens a
   surface that is merely narrow.
 - **It does not close the stale-constants risk.** A client pinning constants an
   upgrade has moved still mis-quotes, correctly summed. That is
-  [PENDING_CONSTANTS_SYNC_PLAN.md](../client-app/PENDING_CONSTANTS_SYNC_PLAN.md)'s
+  `timeflareio/mobile-client` — `PENDING_CONSTANTS_SYNC_PLAN.md`'s
   node-version sealing gate, still outstanding.
 - **It does not make gas exact.** Declared gas exceeds consumed gas by design
   in Cosmos, and unused gas is not refunded. Both clients will keep overpaying

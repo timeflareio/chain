@@ -33,7 +33,7 @@ scales with the value validators actually secure.*
 > (restructured the exit-time forfeit into this request-time fee);
 > [REJECTED_TOKEN_ECONOMICS_PLAN.md](REJECTED_TOKEN_ECONOMICS_PLAN.md) §5.4
 > (validator-budget analysis) with the calibration evidence in
-> [ECONSIM_CALIBRATION_V1.md](../../reports/econsim-calibration-v1/ECONSIM_CALIBRATION_V1.md).
+> `ECONSIM_CALIBRATION_V1.md`.
 > **Components**: `x/secrets/types` (constants, `economics.go` derivation,
 > fee-split tests); `x/secrets/keeper` (`msg_server_request_guardians.go`
 > funding flow, reservation event); `docs/spec.md` (Secret Pricing, money
