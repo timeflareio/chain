@@ -145,9 +145,9 @@ and no host substitution:
   "chainId": "timeflare-testnet-alpha",
   "local": false,
   "endpoints": {
-    "rpc": ["https://rpc.test-alpha.timeflare.io"],
-    "rest": ["https://rest.test-alpha.timeflare.io"],
-    "grpc": ["grpc.test-alpha.timeflare.io:443"]
+    "rpc": ["https://rpc.test-alpha.net.timeflare.io"],
+    "rest": ["https://rest.test-alpha.net.timeflare.io"],
+    "grpc": ["grpc.test-alpha.net.timeflare.io:443"]
   }
 }
 ```

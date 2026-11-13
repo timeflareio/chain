@@ -30,7 +30,7 @@
   - **unaffected, confirmed by sweep**: guardian, mobile-client (both consume
     the SDK's dist tarball or nothing; neither touches the examples bundle)
   - **noted, not executed here**: the "George, the pre-funded test user"
-    fixture row in `network/docs/planning/PENDING_TESTNET_LAUNCH_PLAN.md`
+    fixture row in `network/docs/planning/PENDING_TEST_BRAVO_PLAN.md`
     is stale once this lands; that plan's owner amends it when it is next
     touched.
 

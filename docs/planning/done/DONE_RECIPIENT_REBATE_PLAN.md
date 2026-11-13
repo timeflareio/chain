@@ -47,7 +47,7 @@ tops up a wallet on every network, once it can transact at all.*
 > · `docs/spec.md` (new section, economics tables) · `mobile-client/app`
 > (surface the rebate on a revealed inbound secret) · `devnet/` (e2e scenario) ·
 > docs sweep. Replaces the faucet item in
-> `timeflareio/network` — `PENDING_TESTNET_LAUNCH_PLAN.md` §2 and
+> `timeflareio/network` — `PENDING_TEST_BRAVO_PLAN.md` §2 and
 > discharges the Wave-4 dependency in
 > `timeflareio/mobile-client` — `DONE_MOBILE_UX_PROTOCOL_ALIGNMENT_PLAN.md`
 > §5.1. **No new component** — this extends `x/secrets`.
