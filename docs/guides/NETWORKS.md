@@ -141,9 +141,10 @@ and no host substitution:
 ```json
 {
   "id": "test-alpha",
-  "label": "Public testnet",
+  "label": "Test network alpha",
   "chainId": "timeflare-testnet-alpha",
   "local": false,
+  "blockTime": "6s",
   "endpoints": {
     "rpc": ["https://rpc.test-alpha.net.timeflare.io"],
     "rest": ["https://rest.test-alpha.net.timeflare.io"],
@@ -155,10 +156,11 @@ and no host substitution:
 Endpoints are lists so that one unreachable host is not an unreachable network;
 list every host that serves the same chain id.
 
-Only the devnet is defined today, because it is the only network that exists. A
-testnet row lands here when there is one to name — deliberately not before, since
-an entry naming a host that does not answer would be handed to consumers as a
-default.
+Two networks are defined: the devnet, and `test-alpha`, the first public test
+network, which runs on one host and may be reset at any time
+(`timeflareio/network` — `networks/test-alpha/`). A network's row lands here once
+its endpoints answer — deliberately not before, since an entry naming a host that
+does not answer would be handed to consumers as a choice.
 
 ## What is checked
 
